@@ -33,22 +33,44 @@ import { Eye, Ban, Search, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { buttonbg } from "@/contexts/theme";
+import { userApi } from "@/redux/Api/userApi";
+import { toast } from "sonner";
 
-// Mock Data
-const generateUsers = () => {
-  return Array(8)
-    .fill(null)
-    .map((_, i) => ({
-      id: "01",
-      name: "Robert Fox",
-      email: "fox@email",
-      phone: "+123124",
-      date: "02-24-2024",
-      avatar: "/placeholder.png",
-    }));
-};
+// Types
+interface User {
+  _id: string;
+  name?: string;
+  nickname: string;
+  email?: string;
+  phoneNumber?: string;
+  isVerify: boolean;
+  gender: string;
+  hobbies: string[];
+  role: string;
+  status: string;
+  photo: string | null;
+  language: string[];
+  age: string;
+  isTramsAndConditions: boolean;
+  isDelete: boolean;
+  createdAt: string;
+  updatedAt: string;
+  id: string;
+}
 
-const usersData = generateUsers();
+interface UsersResponse {
+  success: boolean;
+  message: string;
+  data: {
+    meta: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPage: number;
+    };
+    all_users: User[];
+  };
+}
 
 // User Detail Modal Component
 const UserDetailModal = ({
@@ -103,20 +125,84 @@ export default function UsersPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
 
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
 
-  const [userToBlock, setUserToBlock] = useState<any>(null);
+  const [userToBlock, setUserToBlock] = useState<User | null>(null);
   const [isBlockOpen, setIsBlockOpen] = useState(false);
+
+  const fetchUsers = async (page: number = 1) => {
+    try {
+      setLoading(true);
+      const response = await userApi.findAllUsersByAdmin(page);
+
+      if (response.success) {
+        // Get current user ID from token
+        const token = localStorage.getItem("token");
+        let currentUserId = null;
+
+        if (token) {
+          try {
+            const tokenParts = token.split(".");
+            if (tokenParts.length === 3) {
+              const payload = atob(tokenParts[1]);
+              const decodedToken = JSON.parse(payload);
+              currentUserId = decodedToken.id;
+            }
+          } catch (error) {
+            console.error("Error decoding token:", error);
+          }
+        }
+
+        // Filter users to show all users except the current logged-in user
+        const allUsers = response.data.all_users;
+        const filteredByToken = currentUserId
+          ? allUsers.filter((user: User) => user.id !== currentUserId)
+          : allUsers;
+
+        setUsers(filteredByToken);
+        setTotalPages(response.data.meta.totalPage);
+        setTotalUsers(response.data.meta.total);
+        setCurrentPage(response.data.meta.page);
+      } else {
+        toast.error("Failed to fetch users");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to fetch users");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/auth");
     } else if (user?.role !== "admin") {
       router.push("/");
+    } else {
+      fetchUsers();
     }
   }, [isAuthenticated, user, router]);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      fetchUsers(page);
+    }
+  };
+
+  const filteredUsers = users.filter(
+    (user) =>
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.nickname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.phoneNumber?.includes(searchQuery),
+  );
 
   if (!user || user.role !== "admin") return null;
 
@@ -156,6 +242,27 @@ export default function UsersPage() {
         </select>
       </div> */}
 
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900">{totalUsers}</h3>
+            <p className="text-gray-600">Total Users</p>
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-green-600">
+              {users.filter((u) => u.isVerify).length}
+            </h3>
+            <p className="text-gray-600">Verified Users</p>
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-blue-600">
+              {users.filter((u) => u.role === "admin").length}
+            </h3>
+            <p className="text-gray-600">Admins</p>
+          </div>
+        </div>
+      </div>
+
       {/* Table Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
@@ -183,137 +290,137 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usersData.map((u, i) => (
-                <TableRow
-                  key={i}
-                  className="hover:bg-gray-50 border-b border-gray-100"
-                >
-                  <TableCell className="font-medium text-gray-600 py-4">
-                    {i + 1}
-                  </TableCell>
-                  <TableCell className="py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden relative">
-                        <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-500">
-                          {u.name.charAt(0)}
-                        </div>
-                      </div>
-                      <span className="font-medium text-gray-900">
-                        {u.name}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-gray-600 py-4">
-                    {u.email}
-                  </TableCell>
-                  <TableCell className="text-gray-600 py-4">
-                    {u.phone}
-                  </TableCell>
-                  <TableCell className="text-gray-600 py-4">{u.date}</TableCell>
-                  <TableCell className="py-4">
-                    <div className="flex items-center justify-center gap-3">
-                      <button
-                        onClick={() => {
-                          setUserToBlock(u);
-                          setIsBlockOpen(true);
-                        }}
-                        className="text-red-500 hover:text-red-600 p-2 hover:bg-red-50 rounded-full transition-colors"
-                      >
-                        <Ban className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedUser(u);
-                          setIsViewOpen(true);
-                        }}
-                        className="text-[#58976B] hover:text-[#2E6F65] p-2 hover:bg-green-50 rounded-full transition-colors"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                    </div>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    Loading users...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    No users found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredUsers.map((u) => (
+                  <TableRow
+                    key={u.id}
+                    className="hover:bg-gray-50 border-b border-gray-100"
+                  >
+                    <TableCell className="font-medium text-gray-600 py-4">
+                      {u.id.slice(-6)}
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden relative">
+                          {u.photo ? (
+                            <img
+                              src={u.photo}
+                              alt={u.name || u.nickname}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-500">
+                              {(u.name || u.nickname)?.charAt(0)?.toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900 block">
+                            {u.name || u.nickname}
+                          </span>
+                          <span className="text-xs text-gray-500 capitalize">
+                            {u.role}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-gray-600 py-4">
+                      {u.email || u.phoneNumber || "N/A"}
+                    </TableCell>
+                    <TableCell className="text-gray-600 py-4">
+                      {u.phoneNumber || "N/A"}
+                    </TableCell>
+                    <TableCell className="text-gray-600 py-4">
+                      {new Date(u.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => {
+                            setSelectedUser(u);
+                            setIsViewOpen(true);
+                          }}
+                          className="text-blue-500 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUserToBlock(u);
+                            setIsBlockOpen(true);
+                          }}
+                          className="text-red-500 hover:text-red-600 p-2 hover:bg-red-50 rounded-full transition-colors"
+                        >
+                          <Ban className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
       </div>
 
-      {/* Pagination Section */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
-        {/* <p className="text-[#58976B] text-sm font-medium">SHOWING 1-8 OF 250</p> */}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className={
+                    currentPage === 1
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
+                />
+              </PaginationItem>
 
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                className="text-gray-500 hover:text-[#2E6F65]"
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                isActive
-                className="bg-[#2E6F65] text-white hover:bg-[#2E6F65]/90 hover:text-white border-0"
-              >
-                1
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                className="text-gray-600 hover:text-[#2E6F65] hover:bg-gray-100 border-0"
-              >
-                2
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                className="text-gray-600 hover:text-[#2E6F65] hover:bg-gray-100 border-0"
-              >
-                3
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <span className="flex items-center justify-center h-9 w-9 text-gray-400">
-                ...
-              </span>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                className="text-gray-600 hover:text-[#2E6F65] hover:bg-gray-100 border-0"
-              >
-                30
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                className="text-gray-600 hover:text-[#2E6F65] hover:bg-gray-100 border-0"
-              >
-                60
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationLink
-                href="#"
-                className="text-gray-600 hover:text-[#2E6F65] hover:bg-gray-100 border-0"
-              >
-                120
-              </PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                className="text-gray-500 hover:text-[#2E6F65]"
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </div>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => handlePageChange(page)}
+                      isActive={currentPage === page}
+                      className="cursor-pointer"
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ),
+              )}
+
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className={
+                    currentPage === totalPages
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
+
+      {/* User Stats */}
 
       {/* User Details Modal */}
       <UserDetailModal
@@ -324,30 +431,19 @@ export default function UsersPage() {
 
       {/* Block User Alert Dialog */}
       <AlertDialog open={isBlockOpen} onOpenChange={setIsBlockOpen}>
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Block User?</AlertDialogTitle>
+            <AlertDialogTitle>Block User</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to block{" "}
-              <span className="font-bold text-gray-900">
-                {userToBlock?.name}
-              </span>
-              ? They will lose access to the platform.
+              {userToBlock?.name || userToBlock?.nickname}? This action can be
+              reversed later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setUserToBlock(null)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                // Implement block logic here
-                console.log("Blocking user:", userToBlock?.id);
-                setIsBlockOpen(false);
-              }}
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              Block
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700">
+              Block User
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
