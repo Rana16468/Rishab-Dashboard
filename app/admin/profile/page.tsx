@@ -36,61 +36,79 @@ export default function ProfilePage() {
   }, [user]);
 
   return (
-    <div className="w-full flex flex-col items-center gap-6 p-4 md:p-8">
-      <div className="w-full max-w-xl">
-        <div className="flex flex-col items-center mb-8">
-          <div className="relative w-24 h-24 mb-4 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100">
-            <Image
-              src={profileData?.photo ? profileData?.photo : "/ami.png"}
-              alt="User Avatar"
-              fill
-              className="object-contain p-2"
-            />
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 py-8 px-4">
+      <div className="w-full max-w-4xl mx-auto">
+        {/* Profile Header Card */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+            <div className="relative w-32 h-32 rounded-2xl overflow-hidden border-4 border-white shadow-xl bg-linear-to-br from-[#2E6F65] to-[#58976B] p-1">
+              <div className="w-full h-full rounded-xl overflow-hidden bg-white">
+                <Image
+                  src={profileData?.photo || "/ami.png"}
+                  alt="User Avatar"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                {profileData?.name || user?.fullName || "Admin User"}
+              </h2>
+              <p className="text-gray-600 mb-4">
+                {profileData?.role || user?.role || "Administrator"}
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                  Active
+                </span>
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                  {profileData?.email || "admin@example.com"}
+                </span>
+              </div>
+            </div>
           </div>
-          <h2 className="text-xl font-semibold text-[#0D0D0D]">
-            {profileData?.name || user?.fullName || "Admin User"}
-          </h2>
-          {/* <p className="text-gray-500 capitalize">{user?.role || "Admin"}</p> */}
         </div>
 
-        <h1 className="text-2xl font-bold text-[#0D0D0D] mb-6 text-center">
-          Profile Settings
-        </h1>
-
-        <Tabs
-          defaultValue="edit-profile"
-          className="w-full max-w-xl"
-          onValueChange={setActiveTab}
-        >
-          <TabsList className="grid w-full grid-cols-2 bg-[#F3F4F6] p-1 rounded-lg cursor-pointer">
-            <TabsTrigger
-              value="edit-profile"
-              className={`${activeTabClass} rounded-md transition-all cursor-pointer`}
+        {/* Settings Tabs */}
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="border-b border-gray-200">
+            <Tabs
+              defaultValue="edit-profile"
+              className="w-full"
+              onValueChange={setActiveTab}
             >
-              Edit Profile
-            </TabsTrigger>
-            <TabsTrigger
-              value="change-password"
-              className={`${activeTabClass} rounded-md transition-all cursor-pointer`}
-            >
-              Change Password
-            </TabsTrigger>
-          </TabsList>
+              <TabsList className="grid w-full grid-cols-2 bg-transparent p-0 rounded-none">
+                <TabsTrigger
+                  value="edit-profile"
+                  className={`${activeTabClass}  border-b-2 border-transparent data-[state=active]:border-[#5833b1] data-[state=active]:bg-transparent transition-all cursor-pointer px-6 py-4 text-gray-600 rounded-2xl data-[state=active]:text-[#2E6F65] font-medium`}
+                >
+                  Edit Profile
+                </TabsTrigger>
+                <TabsTrigger
+                  value="change-password"
+                  className={`${activeTabClass} rounded-2xl border-b-2 border-transparent data-[state=active]:border-[#7e14c5] data-[state=active]:bg-transparent transition-all cursor-pointer px-6 py-4 text-gray-600 data-[state=active]:text-[#2E6F65] font-medium`}
+                >
+                  Change Password
+                </TabsTrigger>
+              </TabsList>
 
-          <div className="mt-6 bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-            <TabsContent value="edit-profile" className="mt-0">
-              <EditProfileForm
-                user={user}
-                profileData={profileData}
-                setProfileData={setProfileData}
-              />
-            </TabsContent>
+              <div className="p-8">
+                <TabsContent value="edit-profile" className="mt-0">
+                  <EditProfileForm
+                    user={user}
+                    profileData={profileData}
+                    setProfileData={setProfileData}
+                  />
+                </TabsContent>
 
-            <TabsContent value="change-password" className="mt-0">
-              <ChangePasswordForm />
-            </TabsContent>
+                <TabsContent value="change-password" className="mt-0">
+                  <ChangePasswordForm />
+                </TabsContent>
+              </div>
+            </Tabs>
           </div>
-        </Tabs>
+        </div>
       </div>
     </div>
   );
@@ -211,57 +229,66 @@ function EditProfileForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>User Name</Label>
-        <Input
-          name="name"
-          value={formData.name}
-          onChange={handleInputChange}
-          className="focus-visible:ring-[#00c0b5]"
-          placeholder="Enter full name"
-        />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label className="text-gray-700 font-medium">User Name</Label>
+          <Input
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            className="focus-visible:ring-[#2E6F65] border-gray-300 rounded-lg h-12"
+            placeholder="Enter full name"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-gray-700 font-medium">Email</Label>
+          <Input
+            value={profileData?.email || user?.email || "admin@example.com"}
+            disabled
+            className="bg-gray-50 border-gray-300 rounded-lg h-12"
+          />
+        </div>
       </div>
-      <div className="space-y-2">
-        <Label>Email</Label>
-        <Input
-          value={profileData?.email || user?.email || "admin@example.com"}
-          disabled
-          className="bg-gray-50"
-        />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label className="text-gray-700 font-medium">Contact Number</Label>
+          <Input
+            name="phone"
+            value={formData.phone}
+            onChange={handleInputChange}
+            className="focus-visible:ring-[#2E6F65] border-gray-300 rounded-lg h-12"
+            placeholder="Enter contact number"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-gray-700 font-medium">Nickname</Label>
+          <Input
+            name="nickname"
+            value={formData.nickname}
+            onChange={handleInputChange}
+            className="focus-visible:ring-[#2E6F65] border-gray-300 rounded-lg h-12"
+            placeholder="Enter nickname"
+          />
+        </div>
       </div>
+
       <div className="space-y-2">
-        <Label>Contact Number</Label>
-        <Input
-          name="phone"
-          value={formData.phone}
-          onChange={handleInputChange}
-          className="focus-visible:ring-[#00c0b5]"
-          placeholder="Enter contact number"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Nickname</Label>
-        <Input
-          name="nickname"
-          value={formData.nickname}
-          onChange={handleInputChange}
-          className="focus-visible:ring-[#00c0b5]"
-          placeholder="Enter nickname"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Age</Label>
+        <Label className="text-gray-700 font-medium">Age</Label>
         <Input
           name="age"
           value={formData.age}
           onChange={handleInputChange}
-          className="focus-visible:ring-[#00c0b5]"
+          className="focus-visible:ring-[#2E6F65] border-gray-300 rounded-lg h-12"
           placeholder="Enter age"
         />
       </div>
+
       <div className="space-y-2">
-        <Label>Languages (comma separated)</Label>
+        <Label className="text-gray-700 font-medium">
+          Languages (comma separated)
+        </Label>
         <Input
           name="language"
           value={formData.language.join(", ")}
@@ -274,12 +301,15 @@ function EditProfileForm({
                 .filter((lang) => lang),
             }))
           }
-          className="focus-visible:ring-[#00c0b5]"
+          className="focus-visible:ring-[#2E6F65] border-gray-300 rounded-lg h-12"
           placeholder="e.g., Bangla, English, Hindi"
         />
       </div>
+
       <div className="space-y-2">
-        <Label>Hobbies (comma separated)</Label>
+        <Label className="text-gray-700 font-medium">
+          Hobbies (comma separated)
+        </Label>
         <Input
           name="hobbies"
           value={formData.hobbies.join(", ")}
@@ -292,23 +322,27 @@ function EditProfileForm({
                 .filter((hobby) => hobby),
             }))
           }
-          className="focus-visible:ring-[#00c0b5]"
+          className="focus-visible:ring-[#2E6F65] border-gray-300 rounded-lg h-12"
           placeholder="e.g., coding, football, music"
         />
       </div>
+
       <div className="space-y-2">
-        <Label>Profile Image</Label>
-        <Input
-          type="file"
-          accept="image/*"
-          onChange={handleImageChange}
-          className="cursor-pointer file:text-blue-500"
-        />
+        <Label className="text-gray-700 font-medium">Profile Image</Label>
+        <div className="relative">
+          <Input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="cursor-pointer file:text-blue-500 border-gray-300 rounded-lg h-12"
+          />
+        </div>
       </div>
+
       <Button
         type="submit"
         disabled={isLoading}
-        className={`w-full ${buttonbg} cursor-pointer mt-4`}
+        className={`w-full ${buttonbg} cursor-pointer mt-6 h-12 rounded-lg font-medium text-lg shadow-lg hover:shadow-xl transition-all`}
       >
         {isLoading ? "Updating..." : "Save Changes"}
       </Button>
@@ -386,71 +420,76 @@ function ChangePasswordForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        <Label>Old Password</Label>
+        <Label className="text-gray-700 font-medium">Old Password</Label>
         <div className="relative">
           <Input
             type={showPass.old ? "text" : "password"}
             name="oldPassword"
             value={formData.oldPassword}
             onChange={handleChange}
-            className="focus-visible:ring-[#00c0b5]"
+            className="focus-visible:ring-[#2E6F65] border-gray-300 rounded-lg h-12 pr-12"
             placeholder="********"
           />
           <button
             type="button"
             onClick={() => toggleShow("old")}
-            className="absolute right-3 top-2.5 text-gray-500"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
           >
-            {showPass.old ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPass.old ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
       </div>
+
       <div className="space-y-2">
-        <Label>New Password</Label>
+        <Label className="text-gray-700 font-medium">New Password</Label>
         <div className="relative">
           <Input
             type={showPass.new ? "text" : "password"}
             name="newPassword"
             value={formData.newPassword}
             onChange={handleChange}
-            className="focus-visible:ring-[#00c0b5]"
+            className="focus-visible:ring-[#2E6F65] border-gray-300 rounded-lg h-12 pr-12"
             placeholder="********"
           />
           <button
             type="button"
             onClick={() => toggleShow("new")}
-            className="absolute right-3 top-2.5 text-gray-500"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
           >
-            {showPass.new ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPass.new ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
       </div>
+
       <div className="space-y-2">
-        <Label>Confirm New Password</Label>
+        <Label className="text-gray-700 font-medium">
+          Confirm New Password
+        </Label>
         <div className="relative">
           <Input
             type={showPass.confirm ? "text" : "password"}
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
-            className="focus-visible:ring-[#00c0b5]"
+            className="focus-visible:ring-[#2E6F65] border-gray-300 rounded-lg h-12 pr-12"
             placeholder="********"
           />
           <button
             type="button"
             onClick={() => toggleShow("confirm")}
-            className="absolute right-3 top-2.5 text-gray-500"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
           >
-            {showPass.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPass.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
       </div>
+
       <Button
         type="submit"
         disabled={isLoading}
-        className={`w-full ${buttonbg} cursor-pointer mt-4`}
+        className={`w-full ${buttonbg} cursor-pointer mt-6 h-12 rounded-lg font-medium text-lg shadow-lg hover:shadow-xl transition-all`}
       >
         {isLoading ? "Updating..." : "Change Password"}
       </Button>

@@ -105,6 +105,7 @@ export default function UsersPage() {
 
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [userToBlock, setUserToBlock] = useState<any>(null);
   const [isBlockOpen, setIsBlockOpen] = useState(false);
@@ -133,6 +134,8 @@ export default function UsersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
               placeholder="Search User"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 bg-white border-none h-11 text-gray-900 placeholder:text-gray-400 rounded-lg"
             />
           </div>
