@@ -122,8 +122,8 @@ function EditProfileForm({
     if (profileData) {
       setFormData((prev) => ({
         ...prev,
-        name: profileData.name,
-        phone: profileData.phone,
+        name: profileData.name || "",
+        phone: profileData.phone || "",
         nickname: profileData.nickname || "",
         language: profileData.language || [],
         hobbies: profileData.hobbies || [],
@@ -132,8 +132,8 @@ function EditProfileForm({
     } else if (user) {
       setFormData((prev) => ({
         ...prev,
-        name: user.fullName,
-        phone: user.phone,
+        name: user.fullName || "",
+        phone: user.phone || "",
       }));
     }
   }, [profileData, user]);
