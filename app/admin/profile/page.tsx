@@ -26,7 +26,7 @@ export default function ProfilePage() {
         const data = await authApi.myProfile();
         setProfileData(data.data);
       } catch (error) {
-        console.error("Failed to fetch profile data:", error);
+        //
       }
     };
 
@@ -41,7 +41,7 @@ export default function ProfilePage() {
         <div className="flex flex-col items-center mb-8">
           <div className="relative w-24 h-24 mb-4 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100">
             <Image
-              src="/ami.png"
+              src={profileData?.photo ? profileData?.photo : "/ami.png"}
               alt="User Avatar"
               fill
               className="object-contain p-2"
@@ -79,7 +79,11 @@ export default function ProfilePage() {
 
           <div className="mt-6 bg-white border border-gray-200 rounded-lg shadow-sm p-6">
             <TabsContent value="edit-profile" className="mt-0">
-              <EditProfileForm user={user} profileData={profileData} />
+              <EditProfileForm
+                user={user}
+                profileData={profileData}
+                setProfileData={setProfileData}
+              />
             </TabsContent>
 
             <TabsContent value="change-password" className="mt-0">
@@ -97,14 +101,20 @@ export default function ProfilePage() {
 function EditProfileForm({
   user,
   profileData,
+  setProfileData,
 }: {
   user: any;
   profileData: any;
+  setProfileData: (data: any) => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
+    nickname: "",
+    language: [] as string[],
+    hobbies: [] as string[],
+    age: "",
     image: null as File | null,
   });
 
@@ -114,6 +124,10 @@ function EditProfileForm({
         ...prev,
         name: profileData.name,
         phone: profileData.phone,
+        nickname: profileData.nickname || "",
+        language: profileData.language || [],
+        hobbies: profileData.hobbies || [],
+        age: profileData.age || "",
       }));
     } else if (user) {
       setFormData((prev) => ({
@@ -157,13 +171,40 @@ function EditProfileForm({
 
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      toast.success("Profile Updated", {
-        description: "Your profile has been updated successfully",
-      });
-      setFormData((prev) => ({ ...prev, image: null }));
-    } catch (error) {
-      toast.error("Update Failed");
+      const updateData = {
+        name: formData.name,
+        nickname: formData.nickname,
+        language: formData.language,
+        hobbies: formData.hobbies,
+        age: formData.age,
+      };
+
+      const response = await authApi.updateMyProfile(
+        updateData,
+        formData.image || undefined,
+      );
+
+      if (response.success) {
+        toast.success(response.message || "Profile Updated Successfully");
+        setFormData((prev) => ({ ...prev, image: null }));
+
+        // Refetch profile data to get updated information
+        const updatedProfile = await authApi.myProfile();
+        setProfileData(updatedProfile.data);
+      } else {
+        const errorMessage =
+          response.errorSources?.[0]?.message ||
+          response.message ||
+          "Failed to update profile";
+        toast.error(errorMessage);
+      }
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.errorSources?.[0]?.message ||
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update profile";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -197,6 +238,62 @@ function EditProfileForm({
           onChange={handleInputChange}
           className="focus-visible:ring-[#00c0b5]"
           placeholder="Enter contact number"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Nickname</Label>
+        <Input
+          name="nickname"
+          value={formData.nickname}
+          onChange={handleInputChange}
+          className="focus-visible:ring-[#00c0b5]"
+          placeholder="Enter nickname"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Age</Label>
+        <Input
+          name="age"
+          value={formData.age}
+          onChange={handleInputChange}
+          className="focus-visible:ring-[#00c0b5]"
+          placeholder="Enter age"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Languages (comma separated)</Label>
+        <Input
+          name="language"
+          value={formData.language.join(", ")}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              language: e.target.value
+                .split(",")
+                .map((lang) => lang.trim())
+                .filter((lang) => lang),
+            }))
+          }
+          className="focus-visible:ring-[#00c0b5]"
+          placeholder="e.g., Bangla, English, Hindi"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Hobbies (comma separated)</Label>
+        <Input
+          name="hobbies"
+          value={formData.hobbies.join(", ")}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              hobbies: e.target.value
+                .split(",")
+                .map((hobby) => hobby.trim())
+                .filter((hobby) => hobby),
+            }))
+          }
+          className="focus-visible:ring-[#00c0b5]"
+          placeholder="e.g., coding, football, music"
         />
       </div>
       <div className="space-y-2">

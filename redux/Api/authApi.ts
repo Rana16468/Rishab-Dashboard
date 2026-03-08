@@ -1,4 +1,4 @@
-import { api } from "./baseApi";
+import { api, BASE_URL } from "./baseApi";
 
 // Types
 interface LoginCredentials {
@@ -33,6 +33,14 @@ interface ForgotPasswordResponse {
   stack?: {
     statusCode: number;
   };
+}
+
+interface UpdateProfileData {
+  name: string;
+  nickname: string;
+  language: string[];
+  hobbies: string[];
+  age: string;
 }
 
 export const authApi = {
@@ -156,6 +164,39 @@ export const authApi = {
     const response = await api.get<any>("/api/v1/auth/myprofile");
     return response;
   },
+
+  updateMyProfile: async (
+    data: UpdateProfileData,
+    file?: File,
+  ): Promise<any> => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    // Create FormData for file upload
+    const formData = new FormData();
+    formData.append("data", JSON.stringify(data));
+
+    if (file) {
+      formData.append("file", file);
+    }
+
+    const response = await fetch(`${BASE_URL}/api/v1/auth/update_my_profile`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  },
 };
 
 export type {
@@ -163,5 +204,6 @@ export type {
   LoginResponse,
   ForgotPasswordCredentials,
   ForgotPasswordResponse,
+  UpdateProfileData,
 };
 export default authApi;

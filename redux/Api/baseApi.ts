@@ -1,4 +1,4 @@
-const BASE_URL =
+export const BASE_URL =
   "https://different-leonard-springfield-orlando.trycloudflare.com";
 
 interface ApiResponse<T = any> {
@@ -73,7 +73,7 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
-  
+
   patch: <T = any>(endpoint: string, data: any, options: RequestOptions = {}) =>
     api.request<T>(endpoint, {
       ...options,
