@@ -156,7 +156,7 @@ export default function UsersPage() {
               currentUserId = decodedToken.id;
             }
           } catch (error) {
-            console.error("Error decoding token:", error);
+            // Ignore token decoding errors
           }
         }
 
