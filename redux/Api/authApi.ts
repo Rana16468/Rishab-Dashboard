@@ -145,6 +145,17 @@ export const authApi = {
 
     throw lastError || new Error("All endpoints failed");
   },
+
+  myProfile: async (): Promise<any> => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    const response = await api.get<any>("/api/v1/auth/myprofile");
+    return response;
+  },
 };
 
 export type {

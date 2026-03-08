@@ -18,6 +18,22 @@ import { activeTabClass, buttonbg } from "@/contexts/theme";
 export default function ProfilePage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("edit-profile");
+  const [profileData, setProfileData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const data = await authApi.myProfile();
+        setProfileData(data.data);
+      } catch (error) {
+        console.error("Failed to fetch profile data:", error);
+      }
+    };
+
+    if (user) {
+      fetchProfileData();
+    }
+  }, [user]);
 
   return (
     <div className="w-full flex flex-col items-center gap-6 p-4 md:p-8">
@@ -32,7 +48,7 @@ export default function ProfilePage() {
             />
           </div>
           <h2 className="text-xl font-semibold text-[#0D0D0D]">
-            {user?.fullName || "Admin User"}
+            {profileData?.name || user?.fullName || "Admin User"}
           </h2>
           {/* <p className="text-gray-500 capitalize">{user?.role || "Admin"}</p> */}
         </div>
@@ -63,7 +79,7 @@ export default function ProfilePage() {
 
           <div className="mt-6 bg-white border border-gray-200 rounded-lg shadow-sm p-6">
             <TabsContent value="edit-profile" className="mt-0">
-              <EditProfileForm user={user} />
+              <EditProfileForm user={user} profileData={profileData} />
             </TabsContent>
 
             <TabsContent value="change-password" className="mt-0">
@@ -78,7 +94,13 @@ export default function ProfilePage() {
 
 // --- Sub-components (Forms) ---
 
-function EditProfileForm({ user }: { user: any }) {
+function EditProfileForm({
+  user,
+  profileData,
+}: {
+  user: any;
+  profileData: any;
+}) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -87,14 +109,20 @@ function EditProfileForm({ user }: { user: any }) {
   });
 
   useEffect(() => {
-    if (user) {
+    if (profileData) {
       setFormData((prev) => ({
         ...prev,
-        name: user.fullName || "Admin User",
-        phone: "123-456-7890",
+        name: profileData.name,
+        phone: profileData.phone,
+      }));
+    } else if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: user.fullName,
+        phone: user.phone,
       }));
     }
-  }, [user]);
+  }, [profileData, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -156,9 +184,7 @@ function EditProfileForm({ user }: { user: any }) {
       <div className="space-y-2">
         <Label>Email</Label>
         <Input
-          value={
-            user?.role === "admin" ? "admin@example.com" : "user@example.com"
-          }
+          value={profileData?.email || user?.email || "admin@example.com"}
           disabled
           className="bg-gray-50"
         />
