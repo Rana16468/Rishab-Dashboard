@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -137,10 +137,10 @@ export default function UsersPage() {
   const [userToBlock, setUserToBlock] = useState<User | null>(null);
   const [isBlockOpen, setIsBlockOpen] = useState(false);
 
-  const fetchUsers = async (page: number = 1) => {
+  const fetchUsers = async (page: number = 1, search: string = "") => {
     try {
       setLoading(true);
-      const response = await userApi.findAllUsersByAdmin(page);
+      const response = await userApi.findAllUsersByAdmin(page, search);
 
       if (response.success) {
         // Get current user ID from token
@@ -190,19 +190,26 @@ export default function UsersPage() {
     }
   }, [isAuthenticated, user, router]);
 
+  // Effect to handle search debouncing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery !== undefined) {
+        fetchUsers(1, searchQuery);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
-      fetchUsers(page);
+      fetchUsers(page, searchQuery);
     }
   };
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.nickname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phoneNumber?.includes(searchQuery),
-  );
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
 
   if (!user || user.role !== "admin") return null;
 
@@ -219,9 +226,9 @@ export default function UsersPage() {
           <div className="relative w-full sm:w-[300px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              placeholder="Search User"
+              placeholder="Search user name email or phone ..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               className="pl-10 bg-white border-none h-11 text-gray-900 placeholder:text-gray-400 rounded-lg"
             />
           </div>
@@ -296,14 +303,14 @@ export default function UsersPage() {
                     Loading users...
                   </TableCell>
                 </TableRow>
-              ) : filteredUsers.length === 0 ? (
+              ) : users.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
                     No users found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((u) => (
+                users.map((u) => (
                   <TableRow
                     key={u.id}
                     className="hover:bg-gray-50 border-b border-gray-100"
