@@ -77,6 +77,55 @@ export const authApi = {
       };
     }
   },
+
+  verifyCode: async (code: string): Promise<any> => {
+    const response = await api.post<any>(
+      "/api/v1/user/verification_forgot_user",
+      {
+        verificationCode: parseInt(code, 10),
+      },
+    );
+    return response;
+  },
+
+  resetPassword: async (password: string): Promise<any> => {
+    const resetToken = localStorage.getItem("resetToken");
+
+    // Get user ID from decoded token
+    let userId = null;
+    try {
+      if (resetToken) {
+        
+        const tokenParts = resetToken.split(".");
+     
+
+        if (tokenParts.length === 3) {
+          const payload = atob(tokenParts[1]);
+          const decodedToken = JSON.parse(payload);
+          userId = decodedToken.id;
+        } else {
+          
+        }
+      }
+    } catch (error) {
+     //
+    }
+
+    if (!userId) {
+      throw new Error("Unable to extract user ID from token");
+    }
+
+    
+
+    const response = await api.post<any>(
+      "/api/v1/user/reset_password",
+      {
+        userId,
+        password,
+      },
+    );
+    return response;
+  }
 };
 
 export type {

@@ -1,15 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { buttonbg, textPrimary } from "@/contexts/theme";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
+import { authApi } from "@/redux/Api/authApi";
+import { toast } from "sonner";
 
 function VerificationCode() {
   const [code, setCode] = useState(new Array(5).fill(""));
+  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
 
   const router = useRouter();
+
+  // Load email from localStorage on component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("resetEmail");
+    if (savedEmail) {
+      setEmail(savedEmail);
+    } else {
+      // If no email found, redirect back to forgot password
+      router.push("/auth/forget-password");
+    }
+  }, [router]);
 
   const handleChange = (value: string, index: number) => {
     if (!isNaN(Number(value))) {
@@ -17,14 +32,60 @@ function VerificationCode() {
       newCode[index] = value;
       setCode(newCode);
 
-      if (value && index < 5) {
+      if (value && index < 4) {
         document.getElementById(`code-${index + 1}`)?.focus();
       }
     }
   };
 
   const handleVerifyCode = async () => {
-    router.push(`/auth/reset-password`);
+    const verificationCode = code.join("");
+
+    if (verificationCode.length !== 5) {
+      toast.error("Please enter all 5 digits");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const response = await authApi.verifyCode(verificationCode);
+
+      if (response.success) {
+        // Save the token to localStorage
+        localStorage.setItem("resetToken", response.data);
+
+        // Decode JWT token to get user data
+        try {
+          const decodedToken = JSON.parse(atob(response.data.split(".")[1]));
+          // Save user data to localStorage for reset password page
+          localStorage.setItem("resetUserData", JSON.stringify(decodedToken));
+        } catch (error) {
+          console.error("Error decoding token:", error);
+        }
+
+        toast.success(response.message || "Code verified successfully!");
+
+        // Redirect to reset password page after a short delay
+        setTimeout(() => {
+          router.push("/auth/reset-password");
+        }, 1500);
+      } else {
+        const errorMessage =
+          response.errorSources?.[0]?.message ||
+          response.message ||
+          "Invalid verification code";
+        toast.error(errorMessage);
+      }
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.errorSources?.[0]?.message ||
+        error.response?.data?.message ||
+        "Verification failed";
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -40,8 +101,8 @@ function VerificationCode() {
             </h2>
             <div className="flex flex-col items-center justify-center text-center">
               <p className="text-[#6A6D76] mb-10 w-full md:w-2/3 ">
-                We sent a reset link to contact@dscode...com enter 5 digit code
-                that is mentioned in the email.
+                We sent a reset link to {email || "your email"} enter 5 digit
+                code that is mentioned in the email.
               </p>
             </div>
 
@@ -63,10 +124,11 @@ function VerificationCode() {
             <div className="flex justify-center items-center my-5">
               <div className="w-1/3 mt-5">
                 <AnimatedButton
-                  text="Verify Code"
+                  text={isLoading ? "Verifying..." : "Verify Code"}
                   onClick={handleVerifyCode}
                   type="button"
                   className="w-full"
+                  disabled={isLoading}
                 />
               </div>
             </div>

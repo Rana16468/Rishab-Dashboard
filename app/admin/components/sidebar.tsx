@@ -75,7 +75,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       {/* Logo */}
       <Link href="/">
         <div className="flex justify-center mt-10 items-center gap-2 px-5">
-          <h1 className="text-3xl font-bold">AMI</h1>
+          <h1 className="text-4xl font-bold mb-2">AMI</h1>
         </div>
       </Link>
 
