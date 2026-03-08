@@ -95,37 +95,56 @@ export const authApi = {
     let userId = null;
     try {
       if (resetToken) {
-        
         const tokenParts = resetToken.split(".");
-     
 
         if (tokenParts.length === 3) {
           const payload = atob(tokenParts[1]);
           const decodedToken = JSON.parse(payload);
           userId = decodedToken.id;
         } else {
-          
         }
       }
     } catch (error) {
-     //
+      //
     }
 
     if (!userId) {
       throw new Error("Unable to extract user ID from token");
     }
 
-    
-
-    const response = await api.post<any>(
-      "/api/v1/user/reset_password",
-      {
-        userId,
-        password,
-      },
-    );
+    const response = await api.post<any>("/api/v1/user/reset_password", {
+      userId,
+      password,
+    });
     return response;
-  }
+  },
+
+  changePassword: async (
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<any> => {
+    const token = localStorage.getItem("token");
+
+    // Try different endpoints to find the correct one
+    const endpoints = ["/api/v1/user/change_password"];
+
+    let lastError;
+    for (const endpoint of endpoints) {
+      try {
+        const response = await api.patch<any>(endpoint, {
+          oldpassword: oldPassword,
+          newpassword: newPassword,
+        });
+
+        return response;
+      } catch (error: any) {
+        lastError = error;
+        continue;
+      }
+    }
+
+    throw lastError || new Error("All endpoints failed");
+  },
 };
 
 export type {

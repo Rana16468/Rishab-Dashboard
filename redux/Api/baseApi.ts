@@ -37,7 +37,7 @@ export const api = {
     if (token) {
       config.headers = {
         ...config.headers,
-        Authorization: `Bearer ${token}`,
+        Authorization: `${token}`,
       };
     }
 
@@ -71,6 +71,13 @@ export const api = {
     api.request<T>(endpoint, {
       ...options,
       method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  
+  patch: <T = any>(endpoint: string, data: any, options: RequestOptions = {}) =>
+    api.request<T>(endpoint, {
+      ...options,
+      method: "PATCH",
       body: JSON.stringify(data),
     }),
 
