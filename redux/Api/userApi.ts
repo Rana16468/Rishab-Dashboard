@@ -19,6 +19,22 @@ export const userApi = {
     const response = await api.get<any>(url);
     return response;
   },
+
+  verifyUser: async (userId: string): Promise<any> => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    const response = await api.patch<any>(
+      `/api/v1/auth/user_verification/${userId}`,
+      {
+        isVerify: true,
+      },
+    );
+    return response;
+  },
 };
 
 export default userApi;

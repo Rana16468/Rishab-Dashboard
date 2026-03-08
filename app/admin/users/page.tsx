@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, Ban, Search, X } from "lucide-react";
+import { Eye, Ban, Search, X, Check } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { buttonbg } from "@/contexts/theme";
@@ -56,6 +56,10 @@ interface User {
   createdAt: string;
   updatedAt: string;
   id: string;
+  // Verification fields that are added after verification
+  verifiedBy?: string;
+  verifiedAt?: string;
+  verificationToken?: string;
 }
 
 interface UsersResponse {
@@ -80,40 +84,180 @@ const UserDetailModal = ({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  user: any;
+  user: User | null;
 }) => {
-  if (!isOpen) return null;
+  if (!isOpen || !user) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative animate-in fade-in zoom-in duration-200">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-        >
-          <X className="w-5 h-5" />
-        </button>
-        <div className="text-center">
-          <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-4 overflow-hidden relative">
-            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xl font-bold">
-              {user?.name?.charAt(0)}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in duration-300">
+        {/* Header with gradient background */}
+        <div className="bg-linear-to-r from-[#5a005e] to-[#2d0552] p-6 rounded-t-2xl relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          <div className="flex flex-col items-center text-center">
+            <div className="relative mb-4">
+              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg">
+                {user.photo ? (
+                  <img
+                    src={user.photo}
+                    alt={user.name || user.nickname}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-white flex items-center justify-center">
+                    <span className="text-2xl font-bold text-[#633cf0]">
+                      {(user.name || user.nickname)?.charAt(0)?.toUpperCase()}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {user.isVerify && (
+                <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center border-3 border-white">
+                  <Check className="w-4 h-4 text-white" />
+                </div>
+              )}
+            </div>
+
+            <h3 className="text-2xl font-bold text-white mb-1">
+              {user?.name || user?.nickname || "Unknown User"}
+            </h3>
+            <p className="text-white/90 text-sm mb-2">
+              {user?.email || user?.phoneNumber || "No contact info"}
+            </p>
+            <div className="flex items-center gap-2">
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  user.role === "admin"
+                    ? "bg-purple-100 text-purple-700"
+                    : "bg-blue-100 text-blue-700"
+                }`}
+              >
+                {user.role}
+              </span>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  user.isVerify
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {user.isVerify ? "Verified" : "Not Verified"}
+              </span>
             </div>
           </div>
-          <h3 className="text-xl font-bold text-[#2E6F65]">{user?.name}</h3>
-          <p className="text-sm text-gray-500 mb-6">{user?.email}</p>
+        </div>
 
-          <div className="space-y-3 text-left">
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-gray-500">Phone</span>
-              <span className="font-medium">{user?.phone}</span>
+        {/* Body with user information */}
+        <div className="p-6 space-y-6">
+          {/* Complete User Information Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Basic Information */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h5 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                Basic Information
+              </h5>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-gray-500">User ID</p>
+                  <p className="font-medium text-gray-900">
+                    {user?.id?.slice(-6) || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Full Name</p>
+                  <p className="font-medium text-gray-900">
+                    {user?.name || user?.nickname || "No name available"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Nickname</p>
+                  <p className="font-medium text-gray-900">
+                    {user?.nickname || "Not provided"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Role</p>
+                  <span
+                    className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                      user?.role === "admin"
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-blue-100 text-blue-700"
+                    }`}
+                  >
+                    {user?.role || "Not provided"}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-gray-500">Joined Date</span>
-              <span className="font-medium">{user?.date}</span>
+
+            {/* Contact Information */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h5 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                Contact Information
+              </h5>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-gray-500">Email</p>
+                  <p className="font-medium text-gray-900 text-sm break-all">
+                    {user?.email || "example@example.com"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Phone Number</p>
+                  <p className="font-medium text-gray-900">
+                    {user?.phoneNumber || "Not provided"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Languages</p>
+                  <p className="font-medium text-gray-900 text-sm">
+                    {user?.language?.length > 0
+                      ? user.language.join(", ")
+                      : "Not provided"}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-gray-500">Status</span>
-              <span className="font-medium text-green-600">Active</span>
+
+            {/* Personal Details */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h5 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                Personal Details
+              </h5>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-gray-500">Gender</p>
+                  <p className="font-medium text-gray-900 capitalize">
+                    {user?.gender || "Not provided"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Age</p>
+                  <p className="font-medium text-gray-900">
+                    {user?.age || "Not provided"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Hobbies</p>
+                  <p className="font-medium text-gray-900 text-sm">
+                    {user?.hobbies?.length > 0
+                      ? user.hobbies.join(", ")
+                      : "Not provided"}
+                  </p>
+                </div>
+              </div>
             </div>
+
+           
           </div>
         </div>
       </div>
@@ -211,6 +355,22 @@ export default function UsersPage() {
     setSearchQuery(query);
   };
 
+  const handleVerifyUser = async (userId: string, userName: string) => {
+    try {
+      const response = await userApi.verifyUser(userId);
+
+      if (response.success) {
+        toast.success(`${userName} has been verified successfully!`);
+        // Refresh the users list
+        fetchUsers(currentPage, searchQuery);
+      } else {
+        toast.error(response.message || "Failed to verify user");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to verify user");
+    }
+  };
+
   if (!user || user.role !== "admin") return null;
 
   return (
@@ -289,6 +449,9 @@ export default function UsersPage() {
                   Phone No
                 </TableHead>
                 <TableHead className="text-[#58976B] font-semibold text-base py-5">
+                  Verification
+                </TableHead>
+                <TableHead className="text-[#58976B] font-semibold text-base py-5">
                   Joined Date
                 </TableHead>
                 <TableHead className="text-[#58976B] font-semibold text-base text-center py-5">
@@ -299,13 +462,13 @@ export default function UsersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     Loading users...
                   </TableCell>
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -334,9 +497,14 @@ export default function UsersPage() {
                           )}
                         </div>
                         <div>
-                          <span className="font-medium text-gray-900 block">
-                            {u.name || u.nickname}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900 block">
+                              {u.name || u.nickname}
+                            </span>
+                            {u.isVerify && (
+                              <Check className="w-4 h-4 text-green-500" />
+                            )}
+                          </div>
                           <span className="text-xs text-gray-500 capitalize">
                             {u.role}
                           </span>
@@ -348,6 +516,17 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell className="text-gray-600 py-4">
                       {u.phoneNumber || "N/A"}
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          u.isVerify
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {u.isVerify ? "Verified" : "Not Verified"}
+                      </span>
                     </TableCell>
                     <TableCell className="text-gray-600 py-4">
                       {new Date(u.createdAt).toLocaleDateString()}
@@ -363,6 +542,20 @@ export default function UsersPage() {
                         >
                           <Eye className="w-5 h-5" />
                         </button>
+
+                        {/* Show verify button only for unverified users */}
+                        {!u.isVerify && (
+                          <button
+                            onClick={() => {
+                              handleVerifyUser(u.id, u.name || u.nickname);
+                            }}
+                            className="text-green-500 hover:text-green-600 p-2 hover:bg-green-50 rounded-full transition-colors"
+                            title="Verify User"
+                          >
+                            <Check className="w-5 h-5" />
+                          </button>
+                        )}
+
                         <button
                           onClick={() => {
                             setUserToBlock(u);
