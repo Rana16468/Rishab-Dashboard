@@ -29,7 +29,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, Ban, Search, X, Check } from "lucide-react";
+import {
+  Eye,
+  Ban,
+  Search,
+  X,
+  Check,
+  MoreVertical,
+  Delete,
+  DeleteIcon,
+} from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { buttonbg } from "@/contexts/theme";
@@ -56,6 +65,8 @@ interface User {
   createdAt: string;
   updatedAt: string;
   id: string;
+  dataCenter?: string;
+  verificationCode?: number;
   // Verification fields that are added after verification
   verifiedBy?: string;
   verifiedAt?: string;
@@ -257,7 +268,81 @@ const UserDetailModal = ({
               </div>
             </div>
 
-           
+            {/* Verification Details - Show only if verified */}
+            {user?.isVerify && (
+              <div className="bg-gray-50 rounded-lg p-4 border-2 border-green-200">
+                <h5 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  Verification Details
+                </h5>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Verified By</p>
+                    <p className="font-medium text-gray-900">
+                      {user?.verifiedBy || "System"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Verified At</p>
+                    <p className="font-medium text-gray-900 text-sm">
+                      {user?.verifiedAt
+                        ? new Date(user.verifiedAt).toLocaleString()
+                        : "Not available"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Verification Code</p>
+                    <p className="font-medium text-gray-900 text-xs break-all font-mono bg-white p-2 rounded border">
+                      {user?.verificationCode || "Not available"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* User Status */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h5 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                User Status
+              </h5>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-gray-500">Current Status</p>
+                  <span
+                    className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                      user?.status === "blocked"
+                        ? "bg-red-100 text-red-700"
+                        : user?.status === "isProgress"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : user?.status === "active"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {user?.status === "blocked"
+                      ? "Blocked"
+                      : user?.status === "isProgress"
+                        ? "In Progress"
+                        : user?.status === "active"
+                          ? "Active"
+                          : user?.status || "Unknown"}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Status Description</p>
+                  <p className="font-medium text-gray-900 text-sm">
+                    {user?.status === "blocked" &&
+                      "User has been blocked and cannot access the system"}
+                    {user?.status === "isProgress" &&
+                      "User account is under review"}
+                    {user?.status === "active" &&
+                      "User account is active and fully functional"}
+                    {!user?.status && "Status not set"}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -280,6 +365,11 @@ export default function UsersPage() {
 
   const [userToBlock, setUserToBlock] = useState<User | null>(null);
   const [isBlockOpen, setIsBlockOpen] = useState(false);
+  const [statusDropdown, setStatusDropdown] = useState<string | null>(null);
+  const [showBlockedUsers, setShowBlockedUsers] = useState(false);
+  const [adminCount, setAdminCount] = useState(0);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const fetchUsers = async (page: number = 1, search: string = "") => {
     try {
@@ -306,11 +396,20 @@ export default function UsersPage() {
 
         // Filter users to show all users except the current logged-in user
         const allUsers = response.data.all_users;
-        const filteredByToken = currentUserId
-          ? allUsers.filter((user: User) => user.id !== currentUserId)
-          : allUsers;
 
-        setUsers(filteredByToken);
+        // Count admins from all users (before filtering out current user)
+        const adminCountFromAll = allUsers.filter(
+          (user: User) => user.role === "admin",
+        ).length;
+        setAdminCount(adminCountFromAll);
+
+        // Additional validation to filter out blank or invalid users
+        const validUsers = allUsers.filter(
+          (user: User) =>
+            user && user.id && user.nickname && user.id !== currentUserId,
+        );
+
+        setUsers(validUsers);
         setTotalPages(response.data.meta.totalPage);
         setTotalUsers(response.data.meta.total);
         setCurrentPage(response.data.meta.page);
@@ -361,13 +460,54 @@ export default function UsersPage() {
 
       if (response.success) {
         toast.success(`${userName} has been verified successfully!`);
-        // Refresh the users list
-        fetchUsers(currentPage, searchQuery);
+        // Refresh the users list with current page and search to prevent blank user addition
+        await fetchUsers(currentPage, searchQuery);
       } else {
         toast.error(response.message || "Failed to verify user");
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to verify user");
+    }
+  };
+
+  const handleUserStatusUpdate = async (
+    userId: string,
+    userName: string,
+    status: "isProgress" | "blocked",
+  ) => {
+    try {
+      console.log(`Updating user ${userName} (${userId}) to status: ${status}`);
+      const response = await userApi.userStatusUpdate(userId, status);
+      console.log("Status update API response:", response);
+
+      if (response.success) {
+        const statusText = status === "isProgress" ? "In Progress" : "Blocked";
+        toast.success(`${userName} status has been updated to ${statusText}!`);
+        // Refresh the users list
+        await fetchUsers(currentPage, searchQuery);
+      } else {
+        console.log("Status update failed:", response.message);
+        toast.error(response.message || "Failed to update user status");
+      }
+    } catch (error: any) {
+      console.log("Status update error:", error);
+      toast.error(error.message || "Failed to update user status");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    try {
+      const response = await userApi.deleteUser(userId);
+
+      if (response.success) {
+        toast.success(`${userName} has been deleted successfully!`);
+        // Refresh the users list
+        await fetchUsers(currentPage, searchQuery);
+      } else {
+        toast.error(response.message || "Failed to delete user");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete user");
     }
   };
 
@@ -386,7 +526,7 @@ export default function UsersPage() {
           <div className="relative w-full sm:w-[300px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              placeholder="Search user name email or phone ..."
+              placeholder="Search user name email phone or datacenter ..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="pl-10 bg-white border-none h-11 text-gray-900 placeholder:text-gray-400 rounded-lg"
@@ -394,7 +534,10 @@ export default function UsersPage() {
           </div>
 
           {/* Blocked Users Button */}
-          <Button className="bg-white text-[#2E6F65] hover:bg-white/90 font-semibold h-11 px-6 rounded-lg w-full sm:w-auto">
+          <Button
+            onClick={() => setShowBlockedUsers(true)}
+            className="bg-white text-[#2E6F65] hover:bg-white/90 font-semibold h-11 px-6 rounded-lg w-full sm:w-auto"
+          >
             Blocked Users
           </Button>
         </div>
@@ -422,9 +565,7 @@ export default function UsersPage() {
             <p className="text-gray-600">Verified Users</p>
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-blue-600">
-              {users.filter((u) => u.role === "admin").length}
-            </h3>
+            <h3 className="text-2xl font-bold text-blue-600">{adminCount}</h3>
             <p className="text-gray-600">Admins</p>
           </div>
         </div>
@@ -452,7 +593,7 @@ export default function UsersPage() {
                   Verification
                 </TableHead>
                 <TableHead className="text-[#58976B] font-semibold text-base py-5">
-                  Joined Date
+                  Data Center
                 </TableHead>
                 <TableHead className="text-[#58976B] font-semibold text-base text-center py-5">
                   Action
@@ -529,7 +670,7 @@ export default function UsersPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-gray-600 py-4">
-                      {new Date(u.createdAt).toLocaleDateString()}
+                      {u.dataCenter || "N/A"}
                     </TableCell>
                     <TableCell className="py-4">
                       <div className="flex items-center justify-center gap-3">
@@ -556,14 +697,65 @@ export default function UsersPage() {
                           </button>
                         )}
 
+                        {/* Status dropdown */}
+                        <div className="relative">
+                          <button
+                            onClick={() =>
+                              setStatusDropdown(
+                                statusDropdown === u.id ? null : u.id,
+                              )
+                            }
+                            className="text-gray-500 hover:text-gray-600 p-2 hover:bg-gray-50 rounded-full transition-colors"
+                            title="More Options"
+                          >
+                            <MoreVertical className="w-5 h-5" />
+                          </button>
+
+                          {statusDropdown === u.id && (
+                            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                              <div className="py-1">
+                                <button
+                                  onClick={() => {
+                                    handleUserStatusUpdate(
+                                      u.id,
+                                      u.name || u.nickname,
+                                      "isProgress",
+                                    );
+                                    setStatusDropdown(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                >
+                                  <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                  Mark as In Progress
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleUserStatusUpdate(
+                                      u.id,
+                                      u.name || u.nickname,
+                                      "blocked",
+                                    );
+                                    setStatusDropdown(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                >
+                                  <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                  Block User
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
                         <button
                           onClick={() => {
-                            setUserToBlock(u);
-                            setIsBlockOpen(true);
+                            setUserToDelete(u);
+                            setIsDeleteOpen(true);
                           }}
                           className="text-red-500 hover:text-red-600 p-2 hover:bg-red-50 rounded-full transition-colors"
+                          title="Delete User"
                         >
-                          <Ban className="w-5 h-5" />
+                          <DeleteIcon className="w-5 h-5" />
                         </button>
                       </div>
                     </TableCell>
@@ -629,25 +821,217 @@ export default function UsersPage() {
         user={selectedUser}
       />
 
-      {/* Block User Alert Dialog */}
-      <AlertDialog open={isBlockOpen} onOpenChange={setIsBlockOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Block User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to block{" "}
-              {userToBlock?.name || userToBlock?.nickname}? This action can be
-              reversed later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700">
-              Block User
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Blocked Users Modal */}
+      {showBlockedUsers && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in duration-300">
+            {/* Header */}
+            <div className="bg-linear-to-r from-red-600 to-red-800 p-6 rounded-t-2xl relative">
+              <button
+                onClick={() => setShowBlockedUsers(false)}
+                className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <h2 className="text-2xl font-bold text-white">Blocked Users</h2>
+              <p className="text-white/90 text-sm mt-1">
+                Users who have been blocked from accessing the system
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Blocked Date</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users
+                      .filter((user) => user.status === "blocked")
+                      .map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-gray-200 rounded-full overflow-hidden">
+                                {user.photo ? (
+                                  <img
+                                    src={user.photo}
+                                    alt={user.name || user.nickname}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-500">
+                                    {(user.name || user.nickname)
+                                      ?.charAt(0)
+                                      ?.toUpperCase()}
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-medium">
+                                  {user.name || user.nickname}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  ID: {user.id?.slice(-6)}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            {user.email || "N/A"}
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            {user.phoneNumber || "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                user.role === "admin"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
+                              {user.role}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            {new Date(user.updatedAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <button
+                              onClick={() => {
+                                handleUserStatusUpdate(
+                                  user.id,
+                                  user.name || user.nickname,
+                                  "isProgress",
+                                );
+                              }}
+                              className="text-green-600 hover:text-green-700 text-sm font-medium"
+                            >
+                              Unblock
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    {users.filter((user) => user.status === "blocked")
+                      .length === 0 && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={6}
+                          className="text-center py-8 text-gray-500"
+                        >
+                          No blocked users found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {isDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md relative animate-in fade-in zoom-in duration-300">
+            {/* Header */}
+            <div className="bg-linear-to-r from-red-600 to-red-800 p-6 rounded-t-2xl relative">
+              <button
+                onClick={() => setIsDeleteOpen(false)}
+                className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <DeleteIcon className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Delete User</h2>
+                  <p className="text-white/90 text-sm">
+                    This action cannot be undone
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-gray-100 rounded-full overflow-hidden">
+                  {userToDelete?.photo ? (
+                    <img
+                      src={userToDelete.photo}
+                      alt={userToDelete.name || userToDelete.nickname}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-500">
+                      {(userToDelete?.name || userToDelete?.nickname)
+                        ?.charAt(0)
+                        ?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {userToDelete?.name || userToDelete?.nickname}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {userToDelete?.email ||
+                      userToDelete?.phoneNumber ||
+                      "No contact info"}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-gray-900">
+                  {userToDelete?.name || userToDelete?.nickname}
+                </span>
+                ? This will permanently remove their account and all associated
+                data. This action cannot be undone.
+              </p>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsDeleteOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (userToDelete) {
+                      handleDeleteUser(
+                        userToDelete.id,
+                        userToDelete.name || userToDelete.nickname,
+                      );
+                      setIsDeleteOpen(false);
+                      setUserToDelete(null);
+                    }
+                  }}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  Delete User
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

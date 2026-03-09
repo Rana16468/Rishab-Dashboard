@@ -35,6 +35,35 @@ export const userApi = {
     );
     return response;
   },
+
+  userStatusUpdate: async (userId: string, status: string): Promise<any> => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    const response = await api.patch<any>(
+      `/api/v1/auth/change_status/${userId}`,
+      {
+        status,
+      },
+    );
+    return response;
+  },
+
+  deleteUser: async (userId: string): Promise<any> => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    const response = await api.delete<any>(
+      `/api/v1/auth/delete_account/${userId}`,
+    );
+    return response;
+  },
 };
 
 export default userApi;
