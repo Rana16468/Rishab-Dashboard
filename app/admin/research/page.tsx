@@ -46,6 +46,36 @@ export default function ContentsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    sessionId: string | null;
+  }>({ show: false, sessionId: null });
+
+  // Function to delete a research session
+  const deleteResearchSession = async (sessionId: string) => {
+    setDeleteConfirm({ show: true, sessionId });
+  };
+
+  // Function to confirm deletion
+  const confirmDelete = async () => {
+    if (deleteConfirm.sessionId) {
+      try {
+        await userResearchApi.deleteResearcherUser(deleteConfirm.sessionId);
+        // Refresh the data after deletion
+        fetchResearchData();
+        console.log(`Session ${deleteConfirm.sessionId} deleted successfully`);
+        setDeleteConfirm({ show: false, sessionId: null });
+      } catch (error) {
+        console.error("Delete error:", error);
+        // You can show an error toast here if needed
+      }
+    }
+  };
+
+  // Function to cancel deletion
+  const cancelDelete = () => {
+    setDeleteConfirm({ show: false, sessionId: null });
+  };
 
   // Function to download all current page data as Excel
   const downloadAllCurrentPageAsExcel = () => {
@@ -652,7 +682,13 @@ export default function ContentsPage() {
                           >
                             <Download className="w-5 h-5" />
                           </button>
-                          <button className="text-gray-500 hover:text-gray-700 transition-colors">
+                          <button
+                            onClick={() =>
+                              deleteResearchSession(item.originalData.sessionId)
+                            }
+                            className="text-red-500 hover:text-red-700 transition-colors"
+                            title="Delete session"
+                          >
                             <Delete className="w-5 h-5" />
                           </button>
                         </div>
@@ -1188,6 +1224,109 @@ export default function ContentsPage() {
                     Close
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-slide-up">
+            {/* Header */}
+            <div className="bg-red-600 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <Delete className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Delete Research Session</h3>
+                  <p className="text-red-100 text-sm">
+                    This action cannot be undone
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.502 0L4.314 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-gray-900 font-medium">
+                    Are you sure you want to delete this session?
+                  </p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Session ID:{" "}
+                    <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                      {deleteConfirm.sessionId}
+                    </span>
+                  </p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    All associated data and analytics will be permanently
+                    removed.
+                  </p>
+                </div>
+              </div>
+
+              {/* Warning Box */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+                <div className="flex items-start gap-2">
+                  <svg
+                    className="w-5 h-5 text-amber-600 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.502 0L4.314 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-amber-800 text-sm font-medium">
+                      Warning
+                    </p>
+                    <p className="text-amber-700 text-xs mt-1">
+                      This action is irreversible. Please double-check before
+                      confirming.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelDelete}
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  <Delete className="w-4 h-4" />
+                  Delete Session
+                </button>
               </div>
             </div>
           </div>

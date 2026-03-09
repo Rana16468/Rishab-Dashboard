@@ -25,6 +25,18 @@ const userResearchApi = {
       throw error;
     }
   },
+
+  deleteResearcherUser: async (sessionId: string) => {
+    try {
+      const response = await api.delete(
+        `/api/v1/game_one/delete_game_one/${sessionId}`,
+      );
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
 };
 
 export default userResearchApi;
