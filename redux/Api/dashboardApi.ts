@@ -30,6 +30,48 @@ const dashboardApi = {
     const response = await api.get<any>("/api/v1/user/user_graph");
     return response;
   },
+
+  gameGraph: async (
+    year: string = "2026",
+    gameMode: string = "UOT",
+  ): Promise<any> => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    const response = await api.get<any>(
+      `/api/v1/speak_game/game_graph?year=${year}&gameMode=${gameMode}`,
+    );
+    return response;
+  },
+
+  conversationGraph: async (year: string = "2026"): Promise<any> => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    const response = await api.get<any>(
+      `/api/v1/chatbot/conversation_growth?year=${year}`,
+    );
+    return response;
+  },
+
+  graphStars: async (): Promise<any> => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    const response = await api.get<any>(
+      "/api/v1/notification/find_by_all_dashboard_list",
+    );
+    return response;
+  },
 };
 
 export default dashboardApi;
