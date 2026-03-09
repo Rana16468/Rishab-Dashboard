@@ -48,7 +48,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     { name: "Earnings", path: "/admin/earnings", icon: DollarSign },
     { name: "Vendors", path: "/admin/vendors", icon: Store },
     { name: "Category", path: "/admin/category", icon: Store },
-    { name: "Contents", path: "/admin/contents", icon: FileText },
+    { name: "Research", path: "/admin/research", icon: FileText },
     { name: "Analytics", path: "/admin/analytics", icon: BarChart },
     { name: "Report", path: "/admin/report", icon: BarChart },
     { name: "Create Admin", path: "/admin/create-admin", icon: ShieldCheck },
