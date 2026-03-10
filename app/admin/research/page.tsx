@@ -415,14 +415,15 @@ export default function ContentsPage() {
         return {
           id: session.sessionId,
           title: `Session ${index + 1}`,
+          gameModeFullMeaning: session.gameModeFullMeaning,
           category:
             session.gameMode === "OC"
-              ? "Object Classification"
+              ? ""
               : session.gameMode === "UOT"
-                ? "Unordered Task"
+                ? ""
                 : session.gameMode === "VF"
-                  ? "Visual Finding"
-                  : "Unknown",
+                  ? ""
+                  : "",
           author: userData.nickname || "Unknown",
           date: new Date().toISOString().split("T")[0],
           status: gameData.completionTime ? "Completed" : "Incomplete",
@@ -613,7 +614,7 @@ export default function ContentsPage() {
                       className="hover:bg-gray-50 border-b border-gray-100 last:border-0"
                     >
                       <TableCell className="text-gray-900 font-medium py-4 pl-6">
-                        {item.category}
+                        {item.gameModeFullMeaning || "-"}
                       </TableCell>
                       <TableCell className="text-gray-600 py-4">
                         <div className="text-sm">

@@ -1,5 +1,6 @@
 export const BASE_URL =
-  process.env.BASE_URL || "https://rishabhbhard-backend.onrender.com";
+  process.env.BASE_URL ||
+  "https://rishabhbhard-backend.onrender.com";
 
 interface ApiResponse<T = any> {
   success: boolean;
