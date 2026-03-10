@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { buttonbg, sidebarbg } from "@/contexts/theme";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
+import { useDispatch } from "react-redux";
+import { logout as logoutAction } from "@/redux/Slices/authSlice";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -40,6 +42,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout, isAuthenticated } = useAuth();
+  const dispatch = useDispatch();
 
   const isActive = (path: string) => pathname === path;
 
@@ -52,12 +55,8 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const navItems = [
     { name: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Users", path: "/admin/users", icon: Users },
-    { name: "Earnings", path: "/admin/earnings", icon: DollarSign },
-    { name: "Vendors", path: "/admin/vendors", icon: Store },
-    { name: "Category", path: "/admin/category", icon: Store },
     { name: "Research", path: "/admin/research", icon: FileText },
     { name: "Conversation", path: "/admin/conversation", icon: ChartArea },
-    { name: "Report", path: "/admin/report", icon: BarChart },
     { name: "Create Admin", path: "/admin/create-admin", icon: ShieldCheck },
     { name: "Settings", path: "/admin/settings", icon: Settings },
   ];
@@ -137,10 +136,11 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
+                  dispatch(logoutAction());
                   logout();
                   router.push("/auth");
                 }}
-                className="bg-red-500 hover:bg-red-600 text-white"
+                className="bg-red-500 hover:bg-red-600  text-white"
               >
                 Log out
               </AlertDialogAction>

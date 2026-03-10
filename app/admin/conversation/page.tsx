@@ -24,16 +24,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
 import {
   Search,
   MessageCircle,
@@ -360,7 +351,7 @@ export default function ConversationPage() {
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-r from-[#2E6F65] to-[#58976B] rounded-xl shadow-lg">
+          <div className="p-3 bg-gradient-to-r from-[#9807db] to-[#9807db] rounded-xl shadow-lg">
             <Users className="w-8 h-8 text-white" />
           </div>
           <div>
@@ -382,12 +373,12 @@ export default function ConversationPage() {
               placeholder="Search users by name, email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-11 border-gray-200 focus:border-[#2E6F65] focus:ring-[#2E6F65]"
+              className="pl-10 h-11 border-gray-200 focus:border-[#9807db] focus:ring-[#9807db]"
             />
           </div>
           <Button
             type="submit"
-            className="bg-gradient-to-r from-[#2E6F65] to-[#58976B] hover:opacity-90 text-white h-11 px-6 shadow-md transition-all"
+            className="bg-gradient-to-r from-[#9807db] to-[#9807db] hover:opacity-90 text-white h-11 px-6 shadow-md transition-all"
           >
             <Filter className="w-4 h-4 mr-2" />
             Search
@@ -407,13 +398,13 @@ export default function ConversationPage() {
                 </p>
               </div>
               <div className="p-3 bg-[#2E6F65]/10 rounded-lg">
-                <Users className="w-6 h-6 text-[#2E6F65]" />
+                <Users className="w-6 h-6 text-[#9807db]" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-[#58976B] shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border-l-4 border-l-[#9807db] shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -425,7 +416,7 @@ export default function ConversationPage() {
                 </p>
               </div>
               <div className="p-3 bg-[#58976B]/10 rounded-lg">
-                <MessageCircle className="w-6 h-6 text-[#58976B]" />
+                <MessageCircle className="w-6 h-6 text-[#9807db]" />
               </div>
             </div>
           </CardContent>
@@ -454,7 +445,7 @@ export default function ConversationPage() {
       <Card className="shadow-lg">
         <CardHeader className="pb-4">
           <CardTitle className="text-xl font-semibold flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-[#2E6F65] to-[#58976B] rounded-lg">
+            <div className="p-2 bg-gradient-to-r from-[#9807db] to-[#9807db] rounded-lg">
               <Users className="w-5 h-5 text-white" />
             </div>
             User List
@@ -513,7 +504,7 @@ export default function ConversationPage() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#2E6F65] to-[#58976B] flex items-center justify-center text-white font-semibold text-lg shadow-md">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#522e6f] to-[#9807db] flex items-center justify-center text-white font-semibold text-lg shadow-md">
                           {(user.name || user.nickname || "U")
                             ?.charAt(0)
                             ?.toUpperCase()}
@@ -562,10 +553,10 @@ export default function ConversationPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div
-                          className={`w-3 h-3 rounded-full ${user.isVerify ? "bg-green-500" : "bg-red-500"}`}
+                          className={`w-3 h-3 rounded-full ${user.isVerify ? "bg-purple-500" : "bg-red-500"}`}
                         ></div>
                         <span
-                          className={`text-sm font-medium ${user.isVerify ? "text-green-700" : "text-red-700"}`}
+                          className={`text-sm font-medium ${user.isVerify ? "text-purple-700" : "text-red-700"}`}
                         >
                           {user.isVerify ? "Verified" : "Not Verified"}
                         </span>
@@ -575,7 +566,7 @@ export default function ConversationPage() {
                       <Button
                         size="sm"
                         onClick={() => handleUserAction(user.id)}
-                        className="bg-gradient-to-r from-[#2E6F65] to-[#58976B] hover:opacity-90 text-white shadow-md transition-all"
+                        className="bg-gradient-to-r from-[#4c2e6f] to-[#6e5897] hover:opacity-90 text-white shadow-md transition-all"
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />
                         Chat
@@ -637,23 +628,21 @@ export default function ConversationPage() {
       )}
 
       {/* Conversations Modal */}
-      <AlertDialog
-        open={showConversationsModal}
-        onOpenChange={setShowConversationsModal}
-      >
-        <div className="w-full">
-          <AlertDialogContent className="w-full max-w-none max-h-[90vh] overflow-hidden">
-            <AlertDialogHeader className="pb-4 border-b">
+      {/* Chat History Modal */}
+      {showConversationsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-xl w-[50vw] max-w-none max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-r from-[#2E6F65] to-[#58976B] rounded-xl shadow-lg">
+                  <div className="p-3 bg-gradient-to-r from-[#5f17d4] to-[#6557b9] rounded-xl shadow-lg">
                     <MessageCircle className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <AlertDialogTitle className="text-2xl font-bold text-gray-900">
+                    <h2 className="text-2xl font-bold text-gray-900">
                       Chat History
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="flex items-center gap-2 text-gray-600">
+                    </h2>
+                    <p className="flex items-center gap-2 text-gray-600 mt-1">
                       <User className="w-4 h-4" />
                       <span className="font-medium">
                         {selectedUser?.name ||
@@ -665,19 +654,19 @@ export default function ConversationPage() {
                           • {selectedUser.email}
                         </span>
                       )}
-                    </AlertDialogDescription>
+                    </p>
                   </div>
                 </div>
                 <Badge variant="outline" className="text-sm px-3 py-1">
                   {totalConversations} conversations
                 </Badge>
               </div>
-            </AlertDialogHeader>
+            </div>
 
-            <div className="flex-1 overflow-y-auto  max-h-[70vh] p-1">
+            <div className="flex-1 overflow-y-auto  max-h-[70vh] p-5">
               {conversationsLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
-                  <div className="w-12 h-12 border-4 border-[#2E6F65] border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-12 h-12 border-4 border-[#4d33be] border-t-transparent rounded-full animate-spin"></div>
                   <div className="text-center">
                     <p className="text-gray-600 font-medium text-lg">
                       Loading conversations...
@@ -706,13 +695,13 @@ export default function ConversationPage() {
                   {conversations.map((conv) => (
                     <Card
                       key={conv._id}
-                      className="border-l-4 border-l-[#2E6F65] shadow-md hover:shadow-lg transition-all"
+                      className="border-l-4 border-l-[#7507be] shadow-md hover:shadow-lg transition-all"
                     >
                       <CardContent className="p-6">
                         {/* Header with User Info and Timestamp */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#2E6F65] to-[#58976B] flex items-center justify-center text-white font-semibold text-lg shadow-md ring-2 ring-gray-300">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#8738e2] to-[#693fdd] flex items-center justify-center text-white font-semibold text-lg shadow-md ring-2 ring-gray-300">
                               {conv.userId.photo ? (
                                 <img
                                   src={conv.userId.photo || "/ami.png"}
@@ -823,13 +812,13 @@ export default function ConversationPage() {
                         <div className="mb-4">
                           <div className="flex items-center gap-2 mb-2">
                             <div className="p-1.5 bg-green-100 rounded">
-                              <MessageCircle className="w-4 h-4 text-green-600" />
+                              <MessageCircle className="w-4 h-4 text-purple-600" />
                             </div>
-                            <h4 className="font-semibold text-green-800">
+                            <h4 className="font-semibold text-purple-800">
                               Assistant Response
                             </h4>
                           </div>
-                          <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                          <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-4 rounded-lg border border-purple-200">
                             <p className="text-gray-700 leading-relaxed">
                               {conv.reply}
                             </p>
@@ -959,7 +948,7 @@ export default function ConversationPage() {
               )}
             </div>
 
-            <AlertDialogFooter className="pt-4 border-t">
+            <div className="p-6 border-t">
               <div className="flex items-center justify-between w-full">
                 <div className="text-sm text-gray-500">
                   {conversations.length > 0 && (
@@ -1052,82 +1041,78 @@ export default function ConversationPage() {
                       </PaginationContent>
                     </Pagination>
                   )}
-                  <AlertDialogCancel className="bg-gradient-to-r from-[#2E6F65] to-[#58976B] text-white hover:opacity-90">
+                  <Button
+                    onClick={() => setShowConversationsModal(false)}
+                    className="bg-gradient-to-r from-[#8106e6] to-[#693be7] text-white hover:opacity-90"
+                  >
                     Close
-                  </AlertDialogCancel>
+                  </Button>
                 </div>
               </div>
-            </AlertDialogFooter>
-          </AlertDialogContent>
+            </div>
+          </div>
         </div>
-      </AlertDialog>
+      )}
 
       {/* Error Modal */}
-      <AlertDialog open={showErrorModal} onOpenChange={setShowErrorModal}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center gap-3">
+      {showErrorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-red-100 rounded-full">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
-              <AlertDialogTitle className="text-lg font-semibold text-red-900">
-                Error
-              </AlertDialogTitle>
+              <h3 className="text-lg font-semibold text-red-900">Error</h3>
             </div>
-          </AlertDialogHeader>
-          <AlertDialogDescription className="text-gray-700">
-            {errorMessage}
-          </AlertDialogDescription>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => setShowErrorModal(false)}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-900"
-            >
-              OK
-            </AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <p className="text-gray-700 mb-6">{errorMessage}</p>
+            <div className="text-right">
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
-      <AlertDialog
-        open={showDeleteConfirmModal}
-        onOpenChange={setShowDeleteConfirmModal}
-      >
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center gap-3">
+      {showDeleteConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-red-100 rounded-full">
                 <Delete className="w-5 h-5 text-red-600" />
               </div>
-              <AlertDialogTitle className="text-lg font-semibold text-red-900">
+              <h3 className="text-lg font-semibold text-red-900">
                 Confirm Deletion
-              </AlertDialogTitle>
+              </h3>
             </div>
-          </AlertDialogHeader>
-          <AlertDialogDescription className="text-gray-700">
-            Are you sure you want to delete this conversation? This action
-            cannot be undone.
-          </AlertDialogDescription>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setShowDeleteConfirmModal(false);
-                setConversationToDelete(null);
-              }}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-900"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteConversation}
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete this conversation? This action
+              cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirmModal(false);
+                  setConversationToDelete(null);
+                }}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteConversation}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
