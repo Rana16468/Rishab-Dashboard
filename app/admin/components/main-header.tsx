@@ -7,6 +7,7 @@ import { Menu, Bell } from "lucide-react";
 import Image from "next/image";
 import { textPrimary, borderPrimary, sidebarbg } from "@/contexts/theme";
 import { authApi } from "@/redux/Api/authApi";
+import NotificationDropdown from "@/components/NotificationDropdown";
 
 interface MainHeaderProps {
   toggleSidebar: () => void;
@@ -49,18 +50,10 @@ export default function MainHeader({ toggleSidebar }: MainHeaderProps) {
             <Menu className="w-8 h-8" />
           </button>
           <div className="flex items-center gap-4">
-            {/* Notification */}
-            <button
-              type="button"
-              aria-label="Notifications"
-              onClick={() => router.push("/admin/notifications")}
-              className={`relative p-2 rounded-full border ${borderPrimary} hover:bg-white/60 transition cursor-pointer`}
-            >
-              <Bell className={`w-6 h-6  ${textPrimary}`} />
-              {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 inline-flex h-2 w-2 rounded-full bg-[#E53E3E]"></span>
-              )}
-            </button>
+            <div className="border-2 rounded-full text-purple-900 border-purple-900 ">
+              {/* Notification Dropdown */}
+              <NotificationDropdown />
+            </div>
 
             <div
               onClick={() => router.push("/admin/profile")}
