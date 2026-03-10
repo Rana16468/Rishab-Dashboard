@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Notification Test Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .connection-panel {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .notification-panel {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: bold;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .connected {
+            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+            color: #2d5016;
+            border: 2px solid #4caf50;
+        }
+
+        .disconnected {
+            background: linear-gradient(135deg, #ffaaa5 0%, #ff8a80 100%);
+            color: #8b0000;
+            border: 2px solid #f44336;
+        }
+
+        .form-group {
+            margin: 20px 0;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="url"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 8px;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .notification {
+            background: white;
+            border-left: 5px solid #4facfe;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.private {
+            border-left-color: #ff9800;
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+        }
+
+        .notification.info {
+            border-left-color: #2196f3;
+        }
+
+        .notification.success {
+            border-left-color: #4caf50;
+        }
+
+        .notification.warning {
+            border-left-color: #ff9800;
+        }
+
+        .notification.error {
+            border-left-color: #f44336;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .notification-type {
+            background: #4facfe;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .notification-time {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .notification-content h4 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .notification-content p {
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .notification-sender {
+            font-size: 12px;
+            color: #888;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #2196f3;
+        }
+
+        .instructions h3 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 Socket.IO Notification Test Client</h1>
+            <p>Connect to your server and test real-time notifications</p>
+        </div>
+
+        <div class="main-content">
+            <div class="connection-panel">
+                <h2>🔌 Connection Settings</h2>
+
+                <div id="connection-status" class="status disconnected">
+                    ❌ Disconnected
+                </div>
+
+                <div class="form-group">
+                    <label for="server-url">Server URL:</label>
+                    <input type="url" id="server-url" value="http://localhost:3054" placeholder="http://localhost:3054">
+                </div>
+
+                <div class="form-group">
+                    <label for="user-id">User ID:</label>
+                    <input type="text" id="user-id" value="test-user-123" placeholder="Enter your user ID">
+                </div>
+
+                <button class="btn btn-primary" onclick="connect()">🔗 Connect</button>
+                <button class="btn btn-danger" onclick="disconnect()">❌ Disconnect</button>
+
+                <div class="instructions">
+                    <h3>📋 How to Test:</h3>
+                    <ol>
+                        <li><strong>Connect:</strong> Click "Connect" button above</li>
+                        <li><strong>Open Postman:</strong> Use your API endpoints</li>
+                        <li><strong>Send Public Notification:</strong>
+                            <br><code>POST /api/notifications/send</code>
+                            <br><code>{"title": "Test", "message": "Hello World", "type": "info"}</code>
+                        </li>
+                        <li><strong>Send Private Notification:</strong>
+                            <br><code>POST /api/notifications/private</code>
+                            <br><code>{"targetUserId": "test-user-123", "title": "Private", "message": "Secret message"}</code>
+                        </li>
+                        <li><strong>Watch:</strong> Notifications appear in real-time!</li>
+                    </ol>
+                </div>
+
+                <div class="log-container" id="log">
+                    [LOG] Waiting for connection...
+                </div>
+            </div>
+
+            <div class="notification-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>📨 Live Notifications</h2>
+                    <button class="clear-btn" onclick="clearNotifications()">Clear All</button>
+                </div>
+
+                <div id="notifications-container">
+                    <div style="text-align: center; color: #888; padding: 50px 20px;">
+                        <h3>🔍 Waiting for notifications...</h3>
+                        <p>Connect to server and trigger notifications via Postman</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        let socket = null;
+        const statusDiv = document.getElementById('connection-status');
+        const notificationsContainer = document.getElementById('notifications-container');
+        const logDiv = document.getElementById('log');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = {
+                'info': '#00ff00',
+                'error': '#ff6b6b',
+                'warning': '#ffa500',
+                'success': '#4caf50'
+            }[type] || '#00ff00';
+
+            logDiv.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function connect() {
+            const serverUrl = document.getElementById('server-url').value;
+            const userId = document.getElementById('user-id').value;
+
+            if (!serverUrl || !userId) {
+                alert('Please enter both Server URL and User ID');
+                return;
+            }
+
+            if (socket) {
+                socket.disconnect();
+            }
+
+            log(`Attempting to connect to ${serverUrl} with userId: ${userId}`, 'info');
+
+            socket = io(serverUrl, {
+                query: { userId: userId },
+                transports: ['websocket', 'polling']
+            });
+
+            socket.on('connect', () => {
+                statusDiv.className = 'status connected';
+                statusDiv.innerHTML = `✅ Connected<br><small>Socket ID: ${socket.id}</small>`;
+                log(`Successfully connected! Socket ID: ${socket.id}`, 'success');
+
+                // Clear the waiting message
+                notificationsContainer.innerHTML = '';
+            });
+
+            socket.on('disconnect', (reason) => {
+                statusDiv.className = 'status disconnected';
+                statusDiv.innerHTML = '❌ Disconnected';
+                log(`Disconnected: ${reason}`, 'error');
+            });
+
+            socket.on('notification', (data) => {
+                log(`Received notification: ${JSON.stringify(data)}`, 'success');
+                displayNotification(data);
+            });
+
+            socket.on('connect_error', (error) => {
+                log(`Connection error: ${error.message}`, 'error');
+                statusDiv.className = 'status disconnected';
+                statusDiv.innerHTML = `❌ Connection Failed<br><small>${error.message}</small>`;
+            });
+
+
+            // added the dynamic userId ---> passby the frontend developer
+            socket.on('user::admin', ({ title, message, type, timestamp, sender, id }) => {
+                console.log(title);
+                displayNotification({ title, message, type, timestamp, sender, id });
+            })
+
+            // Handle any other events that might be emitted
+            socket.onAny((eventName, ...args) => {
+                if (eventName !== 'notification') {
+                    log(`Received event '${eventName}': ${JSON.stringify(args)}`, 'info');
+                }
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                log('Manually disconnected', 'warning');
+            }
+        }
+
+        function displayNotification(notification) {
+            // Create notification element
+            const notificationDiv = document.createElement('div');
+            notificationDiv.className = `notification ${notification.type || 'info'} ${notification.private ? 'private' : ''}`;
+
+            const typeColor = {
+                'info': '#2196f3',
+                'success': '#4caf50',
+                'warning': '#ff9800',
+                'error': '#f44336'
+            }[notification.type] || '#2196f3';
+
+            notificationDiv.innerHTML = `
+                <div class="notification-header">
+                    <span class="notification-type" style="background-color: ${typeColor}">
+                        ${notification.private ? '🔒 Private' : '📢 Public'} - ${notification.type || 'info'}
+                    </span>
+                    <span class="notification-time">${new Date(notification.timestamp).toLocaleTimeString()}</span>
+                </div>
+                <div class="notification-content">
+                    <h4>${notification.title || 'No Title'}</h4>
+                    <p>${notification.message || 'No message content'}</p>
+                </div>
+                <div class="notification-sender">
+                    From: ${notification.sender} | ID: ${notification.id}
+                </div>
+            `;
+
+            // Add to top of notifications container
+            notificationsContainer.insertBefore(notificationDiv, notificationsContainer.firstChild);
+
+            // Remove notification after 30 seconds
+            setTimeout(() => {
+                if (notificationDiv.parentNode) {
+                    notificationDiv.style.opacity = '0';
+                    notificationDiv.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        if (notificationDiv.parentNode) {
+                            notificationDiv.remove();
+                        }
+                    }, 300);
+                }
+            }, 30000);
+        }
+
+        function clearNotifications() {
+            notificationsContainer.innerHTML = `
+                <div style="text-align: center; color: #888; padding: 50px 20px;">
+                    <h3>🔍 Waiting for notifications...</h3>
+                    <p>Connect to server and trigger notifications via Postman</p>
+                </div>
+            `;
+            log('Cleared all notifications', 'info');
+        }
+
+        // Auto-connect on page load
+        window.onload = () => {
+            log('Page loaded. Ready to connect to Socket.IO server.', 'info');
+        };
+
+        // Handle page unload
+        window.onbeforeunload = () => {
+            if (socket) {
+                socket.disconnect();
+            }
+        };
+    </script>
+</body>
+
+</html>

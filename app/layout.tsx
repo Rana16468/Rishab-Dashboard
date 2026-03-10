@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import Providers from "@/components/providers";
+import NotificationDropdown from "@/components/NotificationDropdown";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,6 +32,9 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
           suppressHydrationWarning
         >
+          <div className="fixed top-4 right-4 z-50">
+            <NotificationDropdown />
+          </div>
           {children}
           <Toaster />
         </body>
