@@ -119,7 +119,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       </div>
 
       {/* Logout Button with Shadcn AlertDialog */}
-      <div className="absolute mt-8 md:mt-20 mmd:mt-20 w-full px-5">
+      <div className="absolute bottom-20  w-full px-5">
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <AnimatedButton text="Logout" type="button" className="w-full" />
