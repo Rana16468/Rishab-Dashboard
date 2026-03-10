@@ -15,6 +15,7 @@ import {
   loginFailure,
 } from "@/redux/Slices/authSlice";
 import { useAppSelector } from "@/redux/hooks";
+import { useAuth } from "@/contexts/auth-context";
 
 function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +25,14 @@ function SignInPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { isLoading, error } = useAppSelector((state) => state.auth);
+  const { login: authLogin, isAuthenticated } = useAuth();
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/admin/dashboard");
+    }
+  }, [isAuthenticated, router]);
 
   // Load saved credentials on component mount
   useEffect(() => {
@@ -72,18 +81,39 @@ function SignInPage() {
 
       const response = await authApi.loginAdmin({ email, password });
 
-      // Save accessToken to localStorage
-      if (response.data.accessToken) {
-        localStorage.setItem("token", response.data.accessToken);
-        localStorage.setItem("refreshToken", response.data.refreshToken);
-      }
+      // Parse JWT token to get user info
+      const token = response.data.accessToken;
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map(function (c) {
+            return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+          })
+          .join(""),
+      );
 
-      // Extract user info from JWT token (for now, use email as user info)
+      const decodedToken = JSON.parse(jsonPayload);
+
+      // Save tokens to localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("refreshToken", response.data.refreshToken);
+
+      // Call auth context login with proper data
+      authLogin({
+        role: decodedToken.role,
+        fullName: decodedToken.email.split("@")[0], // Use email prefix as name
+        email: decodedToken.email,
+        token: token,
+      });
+
+      // Extract user info for Redux
       const userInfo = {
-        id: "1", // This would come from the token or a separate user endpoint
-        email: email,
-        name: "Admin User",
-        role: "admin",
+        id: decodedToken.id,
+        email: decodedToken.email,
+        name: decodedToken.email.split("@")[0],
+        role: decodedToken.role,
       };
 
       // Save user data to localStorage
@@ -93,11 +123,10 @@ function SignInPage() {
       dispatch(
         loginSuccess({
           user: userInfo,
-          token: response.data.accessToken,
+          token: token,
         }),
       );
 
-      // Redirect to admin dashboard
       router.push("/admin/dashboard");
     } catch (error: any) {
       const errorMessage =

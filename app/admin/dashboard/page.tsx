@@ -248,7 +248,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/auth");
-    } else if (user?.role !== "admin") {
+    } else if (user?.role?.toLowerCase() !== "admin") {
       router.push("/");
     } else {
       fetchStatsData();
@@ -257,7 +257,7 @@ export default function AdminDashboard() {
     }
   }, [isAuthenticated, user, router, selectedYear]);
 
-  if (!user || user.role !== "admin") return null;
+  if (!user || user.role?.toLowerCase() !== "admin") return null;
 
   return (
     <div className="min-h-screen bg-gray-50/50 space-y-8">

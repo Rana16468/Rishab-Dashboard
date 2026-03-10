@@ -39,9 +39,15 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
 
   const isActive = (path: string) => pathname === path;
+
+  // Redirect if not authenticated
+  if (!isAuthenticated) {
+    router.push("/auth");
+    return null;
+  }
 
   const navItems = [
     { name: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
@@ -117,15 +123,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       <div className="absolute mt-8 md:mt-20 mmd:mt-20 w-full px-5">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <AnimatedButton
-              text="Logout"
-              onClick={() => {
-                logout();
-                router.push("/auth");
-              }}
-              type="button"
-              className="w-full"
-            />
+            <AnimatedButton text="Logout" type="button" className="w-full" />
           </AlertDialogTrigger>
           <AlertDialogContent className="bg-white">
             <AlertDialogHeader>
