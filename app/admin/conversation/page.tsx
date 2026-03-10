@@ -120,6 +120,12 @@ export default function ConversationPage() {
   const [conversationCurrentPage, setConversationCurrentPage] = useState(1);
   const [conversationTotalPages, setConversationTotalPages] = useState(1);
   const [totalConversations, setTotalConversations] = useState(0);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<
+    string | null
+  >(null);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement | null }>({});
 
   // Fetch users
@@ -213,24 +219,32 @@ export default function ConversationPage() {
   };
 
   const handleDeleteConversation = async (conversationId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this conversation? This action cannot be undone.",
-      )
-    ) {
-      return;
-    }
+    setConversationToDelete(conversationId);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteConversation = async () => {
+    if (!conversationToDelete) return;
 
     try {
-      await conversationApi.deleteConversationByConversetionId(conversationId);
+      await conversationApi.deleteConversationByConversetionId(
+        conversationToDelete,
+      );
 
       // Refresh conversations if we have a selected user
       if (selectedUser) {
         handleUserAction(selectedUser.id, conversationCurrentPage);
       }
+
+      // Reset modal state
+      setShowDeleteConfirmModal(false);
+      setConversationToDelete(null);
     } catch (error) {
       console.error("Failed to delete conversation:", error);
-      alert("Failed to delete conversation. Please try again.");
+      setErrorMessage("Failed to delete conversation. Please try again.");
+      setShowErrorModal(true);
+      setShowDeleteConfirmModal(false);
+      setConversationToDelete(null);
     }
   };
 
@@ -1046,6 +1060,73 @@ export default function ConversationPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </div>
+      </AlertDialog>
+
+      {/* Error Modal */}
+      <AlertDialog open={showErrorModal} onOpenChange={setShowErrorModal}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <AlertDialogTitle className="text-lg font-semibold text-red-900">
+                Error
+              </AlertDialogTitle>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogDescription className="text-gray-700">
+            {errorMessage}
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setShowErrorModal(false)}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-900"
+            >
+              OK
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Modal */}
+      <AlertDialog
+        open={showDeleteConfirmModal}
+        onOpenChange={setShowDeleteConfirmModal}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-full">
+                <Delete className="w-5 h-5 text-red-600" />
+              </div>
+              <AlertDialogTitle className="text-lg font-semibold text-red-900">
+                Confirm Deletion
+              </AlertDialogTitle>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogDescription className="text-gray-700">
+            Are you sure you want to delete this conversation? This action
+            cannot be undone.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowDeleteConfirmModal(false);
+                setConversationToDelete(null);
+              }}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-900"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteConversation}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </div>
   );
