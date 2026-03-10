@@ -732,7 +732,7 @@ export default function ContentsPage() {
                         setLimit(Number(e.target.value));
                         setPage(1);
                       }}
-                      className="appearance-none bg-[#2E6F65] text-white rounded-md px-3 py-1 pr-8 text-sm font-medium cursor-pointer hover:bg-[#2E6F65]/90 transition-colors focus:outline-none focus:ring-2 focus:ring-[#2E6F65]/50"
+                      className="appearance-none bg-[#8410d1] text-white rounded-md px-3 py-1 pr-8 text-sm font-medium cursor-pointer hover:bg-[#2E6F65]/90 transition-colors focus:outline-none focus:ring-2 focus:ring-[#2E6F65]/50"
                     >
                       <option value={5}>5</option>
                       <option value={10}>10</option>
@@ -771,7 +771,7 @@ export default function ContentsPage() {
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                           page === 1
                             ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                            : "bg-white text-gray-700 hover:bg-[#2E6F65] hover:text-white border border-gray-200 shadow-sm hover:shadow-md"
+                            : "bg-white text-gray-700 hover:bg-[#502e6f] hover:text-white border border-gray-200 shadow-sm hover:shadow-md"
                         }`}
                       >
                         <svg
@@ -813,7 +813,7 @@ export default function ContentsPage() {
                                 onClick={() => setPage(pageNum)}
                                 className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${
                                   page === pageNum
-                                    ? "bg-[#2E6F65] text-white shadow-md"
+                                    ? "bg-[#5d2e6f] text-white shadow-md"
                                     : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
                                 }`}
                               >
@@ -838,7 +838,7 @@ export default function ContentsPage() {
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                           page === totalPages
                             ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                            : "bg-white text-gray-700 hover:bg-[#2E6F65] hover:text-white border border-gray-200 shadow-sm hover:shadow-md"
+                            : "bg-white text-gray-700 hover:bg-[#8410c7] hover:text-white border border-gray-200 shadow-sm hover:shadow-md"
                         }`}
                       >
                         Next
