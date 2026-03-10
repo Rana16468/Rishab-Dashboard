@@ -14,6 +14,7 @@ import {
   Store,
   FileText,
   BarChart,
+  ChartArea,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -49,7 +50,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     { name: "Vendors", path: "/admin/vendors", icon: Store },
     { name: "Category", path: "/admin/category", icon: Store },
     { name: "Research", path: "/admin/research", icon: FileText },
-    { name: "Analytics", path: "/admin/analytics", icon: BarChart },
+    { name: "Conversation", path: "/admin/conversation", icon: ChartArea },
     { name: "Report", path: "/admin/report", icon: BarChart },
     { name: "Create Admin", path: "/admin/create-admin", icon: ShieldCheck },
     { name: "Settings", path: "/admin/settings", icon: Settings },

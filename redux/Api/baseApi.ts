@@ -1,4 +1,5 @@
 export const BASE_URL =
+  process.env.BASE_URL ||
   "https://different-leonard-springfield-orlando.trycloudflare.com";
 
 interface ApiResponse<T = any> {
