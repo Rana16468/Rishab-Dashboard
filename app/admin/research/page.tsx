@@ -28,6 +28,7 @@ import {
   Search,
   Download,
   Delete,
+  X,
 } from "lucide-react";
 import { buttonbg, textPrimary } from "@/contexts/theme";
 import userResearchApi from "@/redux/Api/userResearchApi";
@@ -77,150 +78,85 @@ export default function ContentsPage() {
     setDeleteConfirm({ show: false, sessionId: null });
   };
 
-  // Function to download all current page data as Excel
+  // Function to download all current page data as Excel (row by row format)
   const downloadAllCurrentPageAsExcel = () => {
     // Create workbook
     const wb = XLSX.utils.book_new();
 
-    // Summary Sheet
-    const summaryData = [
-      ["Research Sessions Report", "", "", "", ""],
-      ["Generated:", new Date().toLocaleString(), "", "", ""],
-      ["Page:", `${page} of ${totalPages}`, "", "", ""],
-      ["Items per page:", limit, "", "", ""],
-      ["Total sessions:", totalItems, "", "", ""],
-      ["", "", "", "", ""],
-      ["Session ID", "Game Mode", "User ID", "Nickname", "Status"],
-      ...contents.map((item) => [
-        item.originalData?.sessionId || "",
-        item.originalData?.gameMode || "",
-        item.originalData?.user?.userId || "",
-        item.originalData?.user?.nickname || "",
-        item.originalData?.gameData?.completionTime
-          ? "Completed"
-          : "Incomplete",
-      ]),
-    ];
-
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-
-    // Style summary sheet
-    const summaryRange = XLSX.utils.decode_range(wsSummary["!ref"] || "A1");
-    for (let row = summaryRange.s.r; row <= summaryRange.e.r; row++) {
-      for (let col = summaryRange.s.c; col <= summaryRange.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!wsSummary[cellAddress]) continue;
-
-        // Header styling
-        if (row === 0 || row === 6) {
-          wsSummary[cellAddress].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: "FFE6B8" } },
-          };
-        }
-      }
-    }
-
-    // Detailed Data Sheet
-    const detailedData = [
-      [
-        "Session ID",
-        "Game Mode",
-        "User ID",
-        "Nickname",
-        "Age",
-        "Gender",
-        "Hobbies",
-        "Languages",
-        "Difficulty",
-        "Stage",
-        "Completion Time",
-        "Hints Used",
-        "Accuracy",
-        "Instruction",
-        "Total Clicks",
-        "Correct Clicks",
-        "Incorrect Clicks",
-        "Average Click Time",
-      ],
-      ...contents.map((item) => [
-        item.originalData?.sessionId || "",
-        item.originalData?.gameMode || "",
-        item.originalData?.user?.userId || "",
-        item.originalData?.user?.nickname || "",
-        item.originalData?.user?.age || "",
-        item.originalData?.user?.gender || "",
-        item.originalData?.user?.hobbies?.join(", ") || "",
-        item.originalData?.user?.language?.join(", ") || "",
-        item.originalData?.gameData?.difficulty || "",
-        item.originalData?.gameData?.stage || "",
-        item.originalData?.gameData?.completionTime || "",
-        item.originalData?.gameData?.metrics?.totalHintsUsed || "",
+    // Simple row-by-row data format
+    const rowData = contents.map((item, index) => ({
+      "SL No": index + 1,
+      "Session ID": item.originalData?.sessionId || "",
+      "Game Mode": item.originalData?.gameMode || "",
+      "User ID": item.originalData?.user?.userId || "",
+      Nickname: item.originalData?.user?.nickname || "",
+      Age: item.originalData?.user?.age || "",
+      Gender: item.originalData?.user?.gender || "",
+      Hobbies: item.originalData?.user?.hobbies?.join(", ") || "",
+      Languages: item.originalData?.user?.language?.join(", ") || "",
+      Difficulty: item.originalData?.gameData?.difficulty || "",
+      Stage: item.originalData?.gameData?.stage || "",
+      "Completion Time": item.originalData?.gameData?.completionTime || "",
+      "Hints Used": item.originalData?.gameData?.metrics?.totalHintsUsed || "",
+      "Accuracy %":
         item.originalData?.gameData?.metrics?.accuracyPercentage || "",
-        item.originalData?.gameData?.metrics?.instructionText || "",
-        item.originalData?.gameData?.rawTileClicks?.length || 0,
+      Instruction: item.originalData?.gameData?.metrics?.instructionText || "",
+      "Total Clicks": item.originalData?.gameData?.rawTileClicks?.length || 0,
+      "Correct Clicks":
         item.originalData?.gameData?.rawTileClicks?.filter(
           (click: any) => click.wasCorrect,
         ).length || 0,
+      "Incorrect Clicks":
         item.originalData?.gameData?.rawTileClicks?.filter(
           (click: any) => !click.wasCorrect,
         ).length || 0,
-        item.averageClickTime || "",
-      ]),
+      "Average Click Time": item.averageClickTime || "",
+      Status: item.originalData?.gameData?.completionTime
+        ? "Completed"
+        : "Incomplete",
+    }));
+
+    // Create worksheet from row data
+    const ws = XLSX.utils.json_to_sheet(rowData);
+
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 8 }, // SL No
+      { wch: 15 }, // Session ID
+      { wch: 12 }, // Game Mode
+      { wch: 15 }, // User ID
+      { wch: 20 }, // Nickname
+      { wch: 8 }, // Age
+      { wch: 10 }, // Gender
+      { wch: 25 }, // Hobbies
+      { wch: 20 }, // Languages
+      { wch: 12 }, // Difficulty
+      { wch: 8 }, // Stage
+      { wch: 15 }, // Completion Time
+      { wch: 12 }, // Hints Used
+      { wch: 12 }, // Accuracy %
+      { wch: 30 }, // Instruction
+      { wch: 15 }, // Total Clicks
+      { wch: 15 }, // Correct Clicks
+      { wch: 18 }, // Incorrect Clicks
+      { wch: 18 }, // Average Click Time
+      { wch: 12 }, // Status
     ];
 
-    const wsDetailed = XLSX.utils.aoa_to_sheet(detailedData);
-
-    // Style detailed sheet
-    const detailedRange = XLSX.utils.decode_range(wsDetailed["!ref"] || "A1");
-    for (let row = detailedRange.s.r; row <= detailedRange.e.r; row++) {
-      for (let col = detailedRange.s.c; col <= detailedRange.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!wsDetailed[cellAddress]) continue;
-
-        // Header styling
-        if (row === 0) {
-          wsDetailed[cellAddress].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: "D4E6F1" } },
-          };
-        }
+    // Style header row
+    const headerRange = XLSX.utils.decode_range(ws["!ref"] || "A1");
+    for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (ws[cellAddress]) {
+        ws[cellAddress].s = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: "D4E6F1" } },
+        };
       }
     }
 
-    // Set column widths
-    wsSummary["!cols"] = [
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 10 },
-    ];
-
-    wsDetailed["!cols"] = [
-      { wch: 25 },
-      { wch: 10 },
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 8 },
-      { wch: 8 },
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 10 },
-      { wch: 8 },
-      { wch: 15 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 25 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 15 },
-      { wch: 15 },
-    ];
-
-    // Add sheets to workbook
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
-    XLSX.utils.book_append_sheet(wb, wsDetailed, "Detailed Data");
+    // Add sheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Research Data");
 
     // Generate Excel file
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
@@ -229,7 +165,7 @@ export default function ContentsPage() {
     });
 
     // Download file
-    const fileName = `Research_Sessions_Page_${page}_${new Date().toISOString().split("T")[0]}.xlsx`;
+    const fileName = `Research_Data_Page_${page}_${new Date().toISOString().split("T")[0]}.xlsx`;
     saveAs(blob, fileName);
   };
 
@@ -889,19 +825,7 @@ export default function ContentsPage() {
                   onClick={() => setShowDetails(false)}
                   className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-2 transition-all duration-200"
                 >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <X className="w-6 h-6" />
                 </button>
               </div>
             </div>
@@ -911,312 +835,100 @@ export default function ContentsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column - Session & User Info */}
                 <div className="lg:col-span-1 space-y-6">
-                  {/* Session Card */}
+                  {/* Session Info */}
                   <div className="bg-linear-to-br from-gray-50 to-gray-100 rounded-xl p-5 border border-gray-200">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="font-semibold text-gray-900">
-                        Session Info
-                      </h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-xs text-gray-500 uppercase tracking-wide">
-                          Session ID
-                        </span>
-                        <p className="font-mono text-sm bg-white px-2 py-1 rounded border">
-                          {selectedSession.sessionId}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-xs text-gray-500 uppercase tracking-wide">
-                          Game Mode
-                        </span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              selectedSession.gameMode === "UOT"
-                                ? "bg-purple-100 text-purple-800"
-                                : selectedSession.gameMode === "OC"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : selectedSession.gameMode === "VF"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {selectedSession.gameMode}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">
+                      Session Info
+                    </h3>
+                    <p>Session ID: {selectedSession.sessionId}</p>
+                    <p>Game Mode: {selectedSession.gameMode}</p>
                   </div>
 
-                  {/* User Card */}
+                  {/* User Info */}
                   <div className="bg-linear-to-br from-blue-50 to-indigo-100 rounded-xl p-5 border border-blue-200">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="font-semibold text-gray-900">
-                        User Profile
-                      </h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                          {selectedSession.user?.nickname
-                            ?.charAt(0)
-                            .toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {selectedSession.user?.nickname}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {selectedSession.user?.userId}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-gray-500">Age:</span>
-                          <p className="font-medium">
-                            {selectedSession.user?.age}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Gender:</span>
-                          <p className="font-medium capitalize">
-                            {selectedSession.user?.gender}
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-xs text-gray-500 uppercase tracking-wide">
-                          Hobbies
-                        </span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {selectedSession.user?.hobbies?.map(
-                            (hobby: string, index: number) => (
-                              <span
-                                key={index}
-                                className="px-2 py-1 bg-white rounded text-xs border"
-                              >
-                                {hobby}
-                              </span>
-                            ),
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-xs text-gray-500 uppercase tracking-wide">
-                          Languages
-                        </span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {selectedSession.user?.language?.map(
-                            (lang: string, index: number) => (
-                              <span
-                                key={index}
-                                className="px-2 py-1 bg-white rounded text-xs border"
-                              >
-                                {lang}
-                              </span>
-                            ),
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">
+                      User Profile
+                    </h3>
+                    <p>Nickname: {selectedSession.user?.nickname}</p>
+                    <p>User ID: {selectedSession.user?.userId}</p>
+                    <p>Age: {selectedSession.user?.age}</p>
+                    <p>Gender: {selectedSession.user?.gender}</p>
                   </div>
                 </div>
 
-                {/* Right Column - Game Data & Performance */}
+                {/* Right Column - Performance */}
                 <div className="lg:col-span-2 space-y-6">
                   {/* Performance Metrics */}
                   <div className="bg-linear-to-br from-green-50 to-emerald-100 rounded-xl p-5 border border-green-200">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="font-semibold text-gray-900">
-                        Performance Metrics
-                      </h3>
-                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">
+                      Performance Metrics
+                    </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="bg-white rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-green-600">
-                          {
-                            selectedSession.gameData?.metrics
-                              ?.accuracyPercentage
-                          }
-                          %
-                        </div>
-                        <div className="text-xs text-gray-500">Accuracy</div>
+                        Accuracy:{" "}
+                        {selectedSession.gameData?.metrics?.accuracyPercentage}%
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-blue-600">
-                          {selectedSession.gameData?.completionTime}s
-                        </div>
-                        <div className="text-xs text-gray-500">Time</div>
+                        Time: {selectedSession.gameData?.completionTime}s
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-purple-600">
-                          {selectedSession.gameData?.metrics?.totalHintsUsed}
-                        </div>
-                        <div className="text-xs text-gray-500">Hints</div>
+                        Hints:{" "}
+                        {selectedSession.gameData?.metrics?.totalHintsUsed}
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-orange-600">
-                          {selectedSession.gameData?.difficulty}
-                        </div>
-                        <div className="text-xs text-gray-500">Level</div>
+                        Level: {selectedSession.gameData?.difficulty}
                       </div>
-                    </div>
-                    <div className="mt-4 p-3 bg-white rounded-lg">
-                      <span className="text-xs text-gray-500 uppercase tracking-wide">
-                        Instruction
-                      </span>
-                      <p className="text-sm font-medium text-gray-900 mt-1">
-                        {selectedSession.gameData?.metrics?.instructionText}
-                      </p>
                     </div>
                   </div>
 
                   {/* Click Analysis */}
                   <div className="bg-linear-to-br from-yellow-50 to-orange-100 rounded-xl p-5 border border-yellow-200">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                    <h3 className="font-semibold text-gray-900 mb-2">
+                      Click Analysis
+                    </h3>
+                    {selectedSession.gameData?.rawTileClicks?.map(
+                      (click: any, index: number) => (
+                        <div
+                          key={index}
+                          className="bg-white rounded-lg p-3 border border-gray-200 mb-2"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 15l-2 5L9 9l11 4-5 2z"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="font-semibold text-gray-900">
-                        Click Analysis
-                      </h3>
-                    </div>
-                    <div className="space-y-3">
-                      {selectedSession.gameData?.rawTileClicks?.map(
-                        (click: any, index: number) => (
-                          <div
-                            key={index}
-                            className="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className={`w-3 h-3 rounded-full ${
-                                    click.wasCorrect
-                                      ? "bg-green-500"
-                                      : "bg-red-500"
-                                  }`}
-                                />
-                                <div>
-                                  <span className="font-medium text-gray-900">
-                                    {click.spriteName}
-                                  </span>
-                                  <div className="text-xs text-gray-500">
-                                    Click #{index + 1}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    click.wasCorrect
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-100 text-red-800"
-                                  }`}
-                                >
-                                  {click.wasCorrect ? "Correct" : "Incorrect"}
-                                </span>
-                                <div className="text-right">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {click.clickTime}s
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    Response Time
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ),
-                      )}
-                    </div>
+                          <p>
+                            Click #{index + 1}: {click.spriteName} -{" "}
+                            {click.wasCorrect ? "Correct" : "Incorrect"} (
+                            {click.clickTime}s)
+                          </p>
+                        </div>
+                      ),
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-500">
-                  Stage {selectedSession.gameData?.stage} • Difficulty{" "}
-                  {selectedSession.gameData?.difficulty}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => downloadSessionAsExcel(selectedSession)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download XLSX
-                  </button>
-                  <button
-                    onClick={() => setShowDetails(false)}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+              <div className="text-sm text-gray-500">
+                Stage {selectedSession.gameData?.stage} • Difficulty{" "}
+                {selectedSession.gameData?.difficulty}
+              </div>
+
+              <div className="flex gap-3">
+                {/* Download Button */}
+                <button
+                  onClick={() => downloadSessionAsExcel(selectedSession)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Download XLSX
+                </button>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowDetails(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
