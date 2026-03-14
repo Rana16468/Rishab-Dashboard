@@ -1,6 +1,4 @@
-export const BASE_URL =
-  process.env.BASE_URL ||
-  "https://cal-dealer-omissions-occur.trycloudflare.com";
+export const BASE_URL = process.env.BASE_URL || "http://98.90.213.99:3060";
 
 interface ApiResponse<T = any> {
   success: boolean;

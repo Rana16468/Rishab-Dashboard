@@ -118,6 +118,7 @@ export default function ConversationPage() {
   const [conversationToDelete, setConversationToDelete] = useState<
     string | null
   >(null);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement | null }>({});
 
   // Fetch users
@@ -240,6 +241,79 @@ export default function ConversationPage() {
     }
   };
 
+  const handleDownloadAllAudio = async (userId: string | undefined) => {
+    if (!userId) return;
+
+    setIsDownloadingAll(true);
+    try {
+      // Fetch all conversations by passing a large limit
+      const response = await conversationApi.findAllConversationsByUser(
+        userId,
+        1,
+        1000,
+      );
+
+      if (response && response.all_conversation_memories) {
+        const audioConversations = response.all_conversation_memories.filter(
+          (conv) => conv.audio_file,
+        );
+
+        if (audioConversations.length === 0) {
+          setErrorMessage("No audio files found for this user.");
+          setShowErrorModal(true);
+          return;
+        }
+
+        // Helper to format date for filename
+        const dtFormat = (dateStr: string) => {
+          const d = new Date(dateStr);
+          return `${d.getFullYear()}${(d.getMonth()+1).toString().padStart(2, '0')}${d.getDate().toString().padStart(2, '0')}`;
+        };
+
+        const userName = selectedUser?.nickname || selectedUser?.name || "User";
+
+        for (let i = 0; i < audioConversations.length; i++) {
+          const conv = audioConversations[i];
+          const audioUrl = conv.audio_file;
+          
+          try {
+            // Fetch the file as a Blob to force download instead of opening a new tab
+            const res = await fetch(audioUrl);
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            
+            // Extract extension or default to mp3
+            const extMatch = audioUrl.match(/\.([^.]+)$/);
+            const ext = extMatch ? extMatch[1] : 'mp3';
+            
+            a.download = `${userName.replace(/[^a-z0-9]/gi, '_')}_Audio_${dtFormat(conv.createdAt)}_${i + 1}.${ext}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+
+            // Small delay to prevent browser from blocking multiple simultaneous downloads
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          } catch (err) {
+            console.error(`Failed to download audio for conversation ${conv._id}`, err);
+          }
+        }
+      } else {
+        setErrorMessage("Could not fetch conversations to download audio.");
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error("Failed to download all audio:", error);
+      setErrorMessage("An error occurred while downloading audio files.");
+      setShowErrorModal(true);
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  };
+
   const handleDownloadAllInfo = (conversation: Conversation) => {
     // Prepare data for XLSX
     const data = [
@@ -265,9 +339,7 @@ export default function ConversationPage() {
       ["Media Information"],
       [
         "Audio File",
-        conversation.audio_file
-          ? `${BASE_URL}/${conversation.audio_file}`
-          : "Not available",
+        conversation.audio_file ? conversation.audio_file : "Not available",
       ],
       ["PDF File", conversation.pdf_file || "Not available"],
       [],
@@ -314,7 +386,7 @@ export default function ConversationPage() {
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-r from-[#9807db] to-[#9807db] rounded-xl shadow-lg">
+          <div className="p-3 bg-linear-to-r from-[#9807db] to-[#9807db] rounded-xl shadow-lg">
             <Users className="w-8 h-8 text-white" />
           </div>
           <div>
@@ -341,7 +413,7 @@ export default function ConversationPage() {
           </div>
           <Button
             type="submit"
-            className="bg-gradient-to-r from-[#9807db] to-[#9807db] hover:opacity-90 text-white h-11 px-6 shadow-md transition-all"
+            className="bg-linear-to-r from-[#9807db] to-[#9807db] hover:opacity-90 text-white h-11 px-6 shadow-md transition-all"
           >
             <Filter className="w-4 h-4 mr-2" />
             Search
@@ -408,7 +480,7 @@ export default function ConversationPage() {
       <Card className="shadow-lg">
         <CardHeader className="pb-4">
           <CardTitle className="text-xl font-semibold flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-[#9807db] to-[#9807db] rounded-lg">
+            <div className="p-2 bg-linear-to-r from-[#9807db] to-[#9807db] rounded-lg">
               <Users className="w-5 h-5 text-white" />
             </div>
             User List
@@ -467,7 +539,7 @@ export default function ConversationPage() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#522e6f] to-[#9807db] flex items-center justify-center text-white font-semibold text-lg shadow-md">
+                        <div className="w-12 h-12 rounded-full bg-linear-to-r from-[#522e6f] to-[#9807db] flex items-center justify-center text-white font-semibold text-lg shadow-md">
                           {(user.name || user.nickname || "U")
                             ?.charAt(0)
                             ?.toUpperCase()}
@@ -529,7 +601,7 @@ export default function ConversationPage() {
                       <Button
                         size="sm"
                         onClick={() => handleUserAction(user.id)}
-                        className="bg-gradient-to-r from-[#4c2e6f] to-[#6e5897] hover:opacity-90 text-white shadow-md transition-all"
+                        className="bg-linear-to-r from-[#4c2e6f] to-[#6e5897] hover:opacity-90 text-white shadow-md transition-all"
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />
                         Chat
@@ -598,7 +670,7 @@ export default function ConversationPage() {
             <div className="p-6 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-r from-[#5f17d4] to-[#6557b9] rounded-xl shadow-lg">
+                  <div className="p-3 bg-linear-to-r from-[#5f17d4] to-[#6557b9] rounded-xl shadow-lg">
                     <MessageCircle className="w-6 h-6 text-white" />
                   </div>
                   <div>
@@ -619,6 +691,23 @@ export default function ConversationPage() {
                       )}
                     </p>
                   </div>
+                  <Button
+                    onClick={() => handleDownloadAllAudio(selectedUser?.id)}
+                    disabled={isDownloadingAll || totalConversations === 0}
+                    className="ml-4 bg-linear-to-r from-[#5f17d4] to-[#6557b9] hover:from-[#4d13ab] hover:to-[#524696] text-white shadow-md transition-all gap-2"
+                  >
+                    {isDownloadingAll ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Downloading...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Download All Audio
+                      </>
+                    )}
+                  </Button>
                 </div>
                 <Badge variant="outline" className="text-sm px-3 py-1">
                   {totalConversations} conversations
@@ -664,7 +753,7 @@ export default function ConversationPage() {
                         {/* Header with User Info and Timestamp */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#8738e2] to-[#693fdd] flex items-center justify-center text-white font-semibold text-lg shadow-md ring-2 ring-gray-300">
+                            <div className="w-10 h-10 rounded-full bg-linear-to-r from-[#8738e2] to-[#693fdd] flex items-center justify-center text-white font-semibold text-lg shadow-md ring-2 ring-gray-300">
                               {conv.userId.photo ? (
                                 <img
                                   src={conv.userId.photo || "/ami.png"}
@@ -764,7 +853,7 @@ export default function ConversationPage() {
                               User Message
                             </h4>
                           </div>
-                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                          <div className="bg-linear-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                             <p className="text-gray-700 leading-relaxed">
                               {conv.userText}
                             </p>
@@ -781,7 +870,7 @@ export default function ConversationPage() {
                               Assistant Response
                             </h4>
                           </div>
-                          <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-4 rounded-lg border border-purple-200">
+                          <div className="bg-linear-to-r from-purple-50 to-violet-50 p-4 rounded-lg border border-purple-200">
                             <p className="text-gray-700 leading-relaxed">
                               {conv.reply}
                             </p>
@@ -799,7 +888,7 @@ export default function ConversationPage() {
                                 AI Summary
                               </h4>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200">
+                            <div className="bg-linear-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200">
                               <p className="text-gray-700 text-sm leading-relaxed">
                                 {conv.summary}
                               </p>
@@ -811,40 +900,18 @@ export default function ConversationPage() {
                         <div className="bg-gray-50 p-4 rounded-lg border">
                           <div className="flex items-center gap-3">
                             {(() => {
-                              const possiblePaths = [
-                                `${BASE_URL}/src/public/audios/${conv.audio_file}`,
-                                `${BASE_URL}/public/audios/${conv.audio_file}`,
-                                `${BASE_URL}/audios/${conv.audio_file}`,
-                                `${BASE_URL}/${conv.audio_file}`,
-                              ];
+                              const audioUrl = conv.audio_file?.startsWith("http")
+                                ? conv.audio_file
+                                : `${BASE_URL}${conv.audio_file}`;
 
                               return (
                                 <audio
                                   ref={(el) => {
                                     if (el) {
                                       audioRefs.current[conv._id] = el;
-
-                                      // Try each path until one works
-                                      let currentPathIndex = 0;
-                                      const tryNextPath = () => {
-                                        if (
-                                          currentPathIndex <
-                                          possiblePaths.length
-                                        ) {
-                                          el.src =
-                                            possiblePaths[currentPathIndex];
-                                          currentPathIndex++;
-                                        }
-                                      };
-
-                                      el.addEventListener("error", () => {
-                                        tryNextPath();
-                                      });
-
-                                      // Start with first path
-                                      tryNextPath();
                                     }
                                   }}
+                                  src={audioUrl}
                                   controls
                                   preload="metadata"
                                   className="flex-1 h-10"
@@ -1006,7 +1073,7 @@ export default function ConversationPage() {
                   )}
                   <Button
                     onClick={() => setShowConversationsModal(false)}
-                    className="bg-gradient-to-r from-[#8106e6] to-[#693be7] text-white hover:opacity-90"
+                    className="bg-linear-to-r from-[#8106e6] to-[#693be7] text-white hover:opacity-90"
                   >
                     Close
                   </Button>
