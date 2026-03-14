@@ -1,6 +1,6 @@
 export const BASE_URL =
   process.env.BASE_URL ||
-  "https://rishabhbhard-backend.onrender.com";
+  "https://cal-dealer-omissions-occur.trycloudflare.com";
 
 interface ApiResponse<T = any> {
   success: boolean;

@@ -44,6 +44,7 @@ import {
   Pause,
   Delete,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface User {
   _id: string;
@@ -240,101 +241,63 @@ export default function ConversationPage() {
   };
 
   const handleDownloadAllInfo = (conversation: Conversation) => {
-    // Create HTML content for PDF
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Conversation Report - ${conversation.userId.name || conversation.userId.nickname}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .section { margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-          .user-info { background: #f8f9fa; }
-          .conversation { background: #e8f5e8; }
-          .summary { background: #e3f2fd; }
-          .audio-info { background: #fff3e0; }
-          .health-badges { display: flex; gap: 10px; margin: 10px 0; }
-          .badge { padding: 5px 10px; border-radius: 15px; font-size: 12px; }
-          .health-trigger { background: #ffebee; color: #c62828; }
-          .mental-distress { background: #f3e5f5; color: #7b1fa2; }
-          .category { background: #e8eaf6; color: #3f51b5; }
-          h1 { color: #2E6F65; }
-          h2 { color: #333; border-bottom: 2px solid #2E6F65; padding-bottom: 5px; }
-          h3 { color: #555; }
-          .meta { font-size: 12px; color: #666; margin-top: 20px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Conversation Report</h1>
-          <p>Generated on ${new Date().toLocaleString()}</p>
-        </div>
+    // Prepare data for XLSX
+    const data = [
+      ["Conversation Report"],
+      ["Generated on", new Date().toLocaleString()],
+      [],
+      ["User Information"],
+      ["Name", conversation.userId.name || conversation.userId.nickname],
+      ["Email", conversation.userId.email || "Not provided"],
+      ["Phone", conversation.userId.phoneNumber || "Not provided"],
+      ["User ID", conversation.userId.id],
+      [],
+      ["Conversation Details"],
+      ["Topic", conversation.conversation_topic],
+      ["Category", conversation.question_category],
+      ["Date", new Date(conversation.createdAt).toLocaleString()],
+      ["Question", conversation.userText],
+      ["Reply", conversation.reply],
+      [],
+      ["AI Summary"],
+      [conversation.summary || "No summary available"],
+      [],
+      ["Media Information"],
+      [
+        "Audio File",
+        conversation.audio_file
+          ? `${BASE_URL}/${conversation.audio_file}`
+          : "Not available",
+      ],
+      ["PDF File", conversation.pdf_file || "Not available"],
+      [],
+      ["Health Indicators"],
+      [
+        "ICope Health Trigger",
+        conversation.icope_health_trigger ? "Yes" : "No",
+      ],
+      ["Mental Distress", conversation.mental_distress ? "Yes" : "No"],
+      [],
+      ["Metadata"],
+      ["Conversation ID", conversation._id],
+      ["Created At", conversation.createdAt],
+      ["Updated At", conversation.updatedAt],
+      ["Status", conversation.isDeleted ? "Deleted" : "Active"],
+    ];
 
-        <div class="section user-info">
-          <h2>User Information</h2>
-          <p><strong>Name:</strong> ${conversation.userId.name || conversation.userId.nickname}</p>
-          <p><strong>Email:</strong> ${conversation.userId.email || "Not provided"}</p>
-          <p><strong>Phone:</strong> ${conversation.userId.phoneNumber || "Not provided"}</p>
-          <p><strong>User ID:</strong> ${conversation.userId.id}</p>
-        </div>
+    // Create workbook and worksheet
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Conversation Report");
 
-        <div class="section conversation">
-          <h2>Conversation Details</h2>
-          <p><strong>Topic:</strong> ${conversation.conversation_topic}</p>
-          <p><strong>Category:</strong> ${conversation.question_category}</p>
-          <p><strong>Date:</strong> ${new Date(conversation.createdAt).toLocaleString()}</p>
-          
-          <h3>Assistant Response:</h3>
-          <p>${conversation.reply}</p>
-        </div>
+    // Generate filename
+    const userName = (conversation.userId.name || conversation.userId.nickname)
+      .replace(/[^a-z0-9]/gi, "_")
+      .toLowerCase();
+    const fileName = `conversation_${userName}_${conversation._id.slice(-6)}.xlsx`;
 
-        ${
-          conversation.summary
-            ? `
-        <div class="section summary">
-          <h2>AI Summary</h2>
-          <p>${conversation.summary}</p>
-        </div>
-        `
-            : ""
-        }
-
-        <div class="section audio-info">
-          <h2>Media Information</h2>
-          <p><strong>Audio File:</strong> ${conversation.audio_file}</p>
-          ${conversation.pdf_file ? `<p><strong>PDF File:</strong> ${conversation.pdf_file}</p>` : ""}
-        </div>
-
-        <div class="section">
-          <h2>Health Indicators</h2>
-          <div class="health-badges">
-            ${conversation.icope_health_trigger ? '<span class="badge health-trigger">❤️ Health Trigger</span>' : ""}
-            ${conversation.mental_distress ? '<span class="badge mental-distress">🧠 Mental Distress</span>' : ""}
-            <span class="badge category">🏷️ ${conversation.question_category}</span>
-          </div>
-        </div>
-
-        <div class="meta">
-          <p><strong>Conversation ID:</strong> ${conversation._id}</p>
-          <p><strong>Created:</strong> ${conversation.createdAt}</p>
-          <p><strong>Updated:</strong> ${conversation.updatedAt}</p>
-          <p><strong>Status:</strong> ${conversation.isDeleted ? "Deleted" : "Active"}</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    // Create a blob and download as PDF
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `conversation-${conversation._id?.slice(-8)}-${new Date().toISOString().slice(0, 10)}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Download the file
+    XLSX.writeFile(wb, fileName);
   };
 
   const formatDate = (date: string) =>

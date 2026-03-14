@@ -7,15 +7,11 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { buttonbg, textPrimary } from "@/contexts/theme";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { authApi } from "@/redux/Api/authApi";
-import {
-  loginStart,
-  loginSuccess,
-  loginFailure,
-} from "@/redux/Slices/authSlice";
+import { loginStart, loginFailure } from "@/redux/Slices/authSlice";
 import { useAppSelector } from "@/redux/hooks";
-import { useAuth } from "@/contexts/auth-context";
+import { toast } from "sonner";
 
 function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -25,14 +21,6 @@ function SignInPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { isLoading, error } = useAppSelector((state) => state.auth);
-  const { login: authLogin, isAuthenticated } = useAuth();
-
-  // Redirect authenticated users to dashboard
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/admin/dashboard");
-    }
-  }, [isAuthenticated, router]);
 
   // Load saved credentials on component mount
   useEffect(() => {
@@ -81,58 +69,20 @@ function SignInPage() {
 
       const response = await authApi.loginAdmin({ email, password });
 
-      // Parse JWT token to get user info
-      const token = response.data.accessToken;
-      const base64Url = token.split(".")[1];
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split("")
-          .map(function (c) {
-            return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-          })
-          .join(""),
-      );
-
-      const decodedToken = JSON.parse(jsonPayload);
-
-      // Save tokens to localStorage
-      localStorage.setItem("token", token);
-      localStorage.setItem("refreshToken", response.data.refreshToken);
-
-      // Call auth context login with proper data
-      authLogin({
-        role: decodedToken.role,
-        fullName: decodedToken.email.split("@")[0], // Use email prefix as name
-        email: decodedToken.email,
-        token: token,
-      });
-
-      // Extract user info for Redux
-      const userInfo = {
-        id: decodedToken.id,
-        email: decodedToken.email,
-        name: decodedToken.email.split("@")[0],
-        role: decodedToken.role,
-      };
-
-      // Save user data to localStorage
-      localStorage.setItem("user", JSON.stringify(userInfo));
-
-      // Dispatch login success with user info and token
-      dispatch(
-        loginSuccess({
-          user: userInfo,
-          token: token,
-        }),
-      );
-
-      router.push("/admin/dashboard");
+      if (response.success) {
+        localStorage.setItem("resetEmail", email);
+        toast.success(response.message || "Checked your email");
+        router.push("/auth/otp-verify");
+      } else {
+        const errorMessage = response.message || "Login failed";
+        dispatch(loginFailure(errorMessage));
+        toast.error(errorMessage);
+      }
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message || error.message || "Login failed";
       dispatch(loginFailure(errorMessage));
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

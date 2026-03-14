@@ -232,151 +232,136 @@ export default function ContentsPage() {
     const fileName = `Research_Sessions_Page_${page}_${new Date().toISOString().split("T")[0]}.xlsx`;
     saveAs(blob, fileName);
   };
+
   const downloadSessionAsExcel = (sessionData: any) => {
-    // Create workbook
+    if (!sessionData) return;
+
     const wb = XLSX.utils.book_new();
 
-    // Session Summary Sheet
+    /* ==============================
+     1️⃣ Session Summary Sheet
+  ============================== */
+
     const summaryData = [
-      ["Session Information", "", ""],
-      ["Field", "Value", ""],
-      ["Session ID", sessionData.sessionId || "", ""],
-      ["Game Mode", sessionData.gameMode || "", ""],
-      ["User ID", sessionData.user?.userId || "", ""],
-      ["Nickname", sessionData.user?.nickname || "", ""],
-      ["Age", sessionData.user?.age || "", ""],
-      ["Gender", sessionData.user?.gender || "", ""],
-      ["Hobbies", sessionData.user?.hobbies?.join(", ") || "", ""],
-      ["Languages", sessionData.user?.language?.join(", ") || "", ""],
-      ["Difficulty", sessionData.gameData?.difficulty || "", ""],
-      ["Stage", sessionData.gameData?.stage || "", ""],
-      ["Completion Time (s)", sessionData.gameData?.completionTime || "", ""],
-      ["Hints Used", sessionData.gameData?.metrics?.totalHintsUsed || "", ""],
-      [
-        "Accuracy (%)",
-        sessionData.gameData?.metrics?.accuracyPercentage || "",
-        "",
-      ],
-      ["Instruction", sessionData.gameData?.metrics?.instructionText || "", ""],
-      ["", "", ""],
-      ["Performance Summary", "", ""],
-      ["Total Clicks", sessionData.gameData?.rawTileClicks?.length || 0, ""],
-      [
-        "Correct Clicks",
-        sessionData.gameData?.rawTileClicks?.filter(
-          (click: any) => click.wasCorrect,
-        ).length || 0,
-        "",
-      ],
-      [
-        "Incorrect Clicks",
-        sessionData.gameData?.rawTileClicks?.filter(
-          (click: any) => !click.wasCorrect,
-        ).length || 0,
-        "",
-      ],
+      ["Session ID", sessionData.sessionId || ""],
+      ["Game Mode", sessionData.gameMode || ""],
+      ["User ID", sessionData.user?.userId || ""],
+      ["Nickname", sessionData.user?.nickname || ""],
+      ["Age", sessionData.user?.age || ""],
+      ["Gender", sessionData.user?.gender || ""],
+      ["Hobbies", (sessionData.user?.hobbies || []).join(", ")],
+      ["Languages", (sessionData.user?.language || []).join(", ")],
+      ["Difficulty", sessionData.gameData?.difficulty || ""],
+      ["Stage", sessionData.gameData?.stage || ""],
+      ["Completion Time", sessionData.gameData?.completionTime || ""],
     ];
 
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
 
-    // Style the summary sheet
-    const summaryRange = XLSX.utils.decode_range(wsSummary["!ref"] || "A1");
-    for (let row = summaryRange.s.r; row <= summaryRange.e.r; row++) {
-      for (let col = summaryRange.s.c; col <= summaryRange.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!wsSummary[cellAddress]) continue;
+    wsSummary["!cols"] = [{ wch: 25 }, { wch: 50 }];
 
-        // Make headers bold
-        if (row === 0 || (row >= 17 && row <= 17)) {
-          wsSummary[cellAddress].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: "FFE6B8" } },
-          };
-        }
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Session Summary");
 
-        // Make field names bold
-        if (col === 0 && row >= 1 && row <= 16) {
-          wsSummary[cellAddress].s = {
-            font: { bold: true },
-          };
-        }
-      }
-    }
+    /* ==============================
+     2️⃣ Click Details Sheet
+  ============================== */
 
-    // Click Details Sheet
     const clickHeaders = [
       "Click No",
       "Sprite Name",
-      "Correct/Incorrect",
-      "Response Time (s)",
-      "Timestamp",
+      "Correct",
+      "Response Time",
     ];
+
     const clickData =
       sessionData.gameData?.rawTileClicks?.map((click: any, index: number) => [
         index + 1,
         click.spriteName || "",
-        click.wasCorrect ? "Correct" : "Incorrect",
-        click.clickTime || 0,
-        `${click.clickTime}s`,
+        click.wasCorrect ? "Yes" : "No",
+        click.clickTime || "",
       ]) || [];
 
     const wsClicks = XLSX.utils.aoa_to_sheet([clickHeaders, ...clickData]);
 
-    // Style the clicks sheet
-    const clickRange = XLSX.utils.decode_range(wsClicks["!ref"] || "A1");
-    for (let row = clickRange.s.r; row <= clickRange.e.r; row++) {
-      for (let col = clickRange.s.c; col <= clickRange.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!wsClicks[cellAddress]) continue;
+    wsClicks["!cols"] = [{ wch: 10 }, { wch: 30 }, { wch: 10 }, { wch: 20 }];
 
-        // Make header bold
-        if (row === 0) {
-          wsClicks[cellAddress].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: "D4E6F1" } },
-          };
-        }
+    wsClicks["!autofilter"] = {
+      ref: "A1:D1",
+    };
 
-        // Color code correct/incorrect
-        if (row > 0 && col === 2) {
-          const isCorrect =
-            sessionData.gameData?.rawTileClicks?.[row - 1]?.wasCorrect;
-          wsClicks[cellAddress].s = {
-            font: { bold: true },
-            fill: { fgColor: { rgb: isCorrect ? "C6E0B4" : "F8CECC" } },
-          };
-        }
-      }
-    }
-
-    // Set column widths
-    wsSummary["!cols"] = [
-      { wch: 20 }, // Field
-      { wch: 30 }, // Value
-      { wch: 10 }, // Empty
-    ];
-
-    wsClicks["!cols"] = [
-      { wch: 10 }, // Click No
-      { wch: 20 }, // Sprite Name
-      { wch: 15 }, // Correct/Incorrect
-      { wch: 15 }, // Response Time
-      { wch: 15 }, // Timestamp
-    ];
-
-    // Add sheets to workbook
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Session Summary");
     XLSX.utils.book_append_sheet(wb, wsClicks, "Click Details");
 
-    // Generate Excel file
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([excelBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
+    /* ==============================
+     3️⃣ Conversation Logs Sheet
+  ============================== */
 
-    // Download file
-    const fileName = `Session_${sessionData.sessionId}_${new Date().toISOString().split("T")[0]}.xlsx`;
-    saveAs(blob, fileName);
+    const conversationHeaders = [
+      "UserID",
+      "ChatId",
+      "ChatSessionId",
+      "timestampUtc",
+      "role",
+      "type",
+      "category",
+      "conversationTop",
+      "language",
+      "audioPath",
+      "durationSeconds",
+      "timings",
+      "message",
+    ];
+
+    const conversationData =
+      sessionData.conversations?.map((msg: any) => [
+        msg.userId || "",
+        msg.chatId || "",
+        msg.chatSessionId || "",
+        msg.timestampUtc || "",
+        msg.role || "",
+        msg.type || "",
+        msg.category || "",
+        msg.conversationTop || "",
+        msg.language || "",
+        msg.audioPath || "",
+        msg.durationSeconds || "",
+        JSON.stringify(msg.timings || {}),
+        msg.message || "",
+      ]) || [];
+
+    const wsConversation = XLSX.utils.aoa_to_sheet([
+      conversationHeaders,
+      ...conversationData,
+    ]);
+
+    wsConversation["!cols"] = [
+      { wch: 15 },
+      { wch: 30 },
+      { wch: 30 },
+      { wch: 25 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 10 },
+      { wch: 25 },
+      { wch: 15 },
+      { wch: 20 },
+      { wch: 80 },
+    ];
+
+    wsConversation["!autofilter"] = {
+      ref: "A1:M1",
+    };
+
+    XLSX.utils.book_append_sheet(wb, wsConversation, "Conversation Logs");
+
+    /* ==============================
+     4️⃣ File Download
+  ============================== */
+
+    const fileName = `session_${sessionData.sessionId || "data"}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
   };
 
   useEffect(() => {
@@ -1218,6 +1203,13 @@ export default function ContentsPage() {
                   {selectedSession.gameData?.difficulty}
                 </div>
                 <div className="flex gap-3">
+                  <button
+                    onClick={() => downloadSessionAsExcel(selectedSession)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download XLSX
+                  </button>
                   <button
                     onClick={() => setShowDetails(false)}
                     className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"

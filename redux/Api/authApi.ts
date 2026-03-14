@@ -10,8 +10,10 @@ interface LoginResponse {
   success: boolean;
   message: string;
   data: {
-    accessToken: string;
-    refreshToken: string;
+    status?: boolean;
+    message?: string;
+    accessToken?: string;
+    refreshToken?: string;
   };
 }
 
@@ -43,20 +45,39 @@ interface UpdateProfileData {
   age: string;
 }
 
+interface VerifyUserPayload {
+  verificationCode: number;
+}
+
+interface VerifyUserResponse {
+  success: boolean;
+  message: string;
+  data: {
+    message: string;
+    accessToken: string;
+  };
+  errorSources?: Array<{
+    path: string;
+    message: string;
+  }>;
+  // Expose accessToken directly for convenience since authApi returns response.data
+  accessToken: string;
+}
+
 export const authApi = {
   loginAdmin: async (credentials: LoginCredentials): Promise<LoginResponse> => {
-    const response = await api.post<{
-      accessToken: string;
-      refreshToken: string;
-    }>("/api/v1/auth/login_admin_account", credentials);
+    const response = await api.post<any>(
+      "/api/v1/auth/login_admin_account",
+      credentials,
+    );
 
     // Construct the LoginResponse from the API response
     return {
       success: response.success,
       message: response.message,
       data: response.data || {
-        accessToken: "",
-        refreshToken: "",
+        status: false,
+        message: "",
       },
     };
   },
@@ -94,6 +115,27 @@ export const authApi = {
       },
     );
     return response;
+  },
+
+  verifyUser: async (
+    payload: VerifyUserPayload,
+  ): Promise<VerifyUserResponse> => {
+    let response = await api.patch<VerifyUserResponse>(
+      "/api/v1/user/user_verification",
+      payload,
+    );
+
+    if (!response.data) {
+      throw new Error("Invalid response from verifyUser API");
+    }
+
+    // Map nested accessToken to top-level for convenience
+    const result: VerifyUserResponse = {
+      ...response.data,
+      accessToken: response.data.accessToken,
+    };
+
+    return result;
   },
 
   resetPassword: async (password: string): Promise<any> => {
@@ -205,5 +247,7 @@ export type {
   ForgotPasswordCredentials,
   ForgotPasswordResponse,
   UpdateProfileData,
+  VerifyUserPayload,
+  VerifyUserResponse,
 };
 export default authApi;
