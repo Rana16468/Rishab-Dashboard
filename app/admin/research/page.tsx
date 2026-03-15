@@ -111,6 +111,12 @@ export default function ContentsPage() {
           (click: any) => !click.wasCorrect,
         ).length || 0,
       "Average Click Time": item.averageClickTime || "",
+      "Created At": item.originalData?.createdAt
+        ? new Date(item.originalData.createdAt).toLocaleString()
+        : "",
+      "Updated At": item.originalData?.updatedAt
+        ? new Date(item.originalData.updatedAt).toLocaleString()
+        : "",
       Status: item.originalData?.gameData?.completionTime
         ? "Completed"
         : "Incomplete",
@@ -140,6 +146,8 @@ export default function ContentsPage() {
       { wch: 15 }, // Correct Clicks
       { wch: 18 }, // Incorrect Clicks
       { wch: 18 }, // Average Click Time
+      { wch: 20 }, // Created At
+      { wch: 20 }, // Updated At
       { wch: 12 }, // Status
     ];
 
@@ -190,6 +198,18 @@ export default function ContentsPage() {
       ["Difficulty", sessionData.gameData?.difficulty || ""],
       ["Stage", sessionData.gameData?.stage || ""],
       ["Completion Time", sessionData.gameData?.completionTime || ""],
+      [
+        "Created At",
+        sessionData.createdAt
+          ? new Date(sessionData.createdAt).toLocaleString()
+          : "",
+      ],
+      [
+        "Updated At",
+        sessionData.updatedAt
+          ? new Date(sessionData.updatedAt).toLocaleString()
+          : "",
+      ],
     ];
 
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
@@ -346,6 +366,12 @@ export default function ContentsPage() {
                   ? ""
                   : "",
           author: userData.nickname || "Unknown",
+          createdDate: session.createdAt
+            ? new Date(session.createdAt).toLocaleString()
+            : "N/A",
+          updatedDate: session.updatedAt
+            ? new Date(session.updatedAt).toLocaleString()
+            : "N/A",
           date: new Date().toISOString().split("T")[0],
           status: gameData.completionTime ? "Completed" : "Incomplete",
           // Store original session data for detailed view
@@ -499,6 +525,11 @@ export default function ContentsPage() {
                   <TableHead
                     className={`font-semibold text-base py-5 ${textPrimary}`}
                   >
+                    Created At
+                  </TableHead>
+                  <TableHead
+                    className={`font-semibold text-base py-5 ${textPrimary}`}
+                  >
                     Clicks
                   </TableHead>
                   <TableHead
@@ -512,7 +543,7 @@ export default function ContentsPage() {
                 {contents.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
+                      colSpan={10}
                       className="text-center py-12 text-gray-500"
                     >
                       <div className="flex flex-col items-center">
@@ -569,6 +600,14 @@ export default function ContentsPage() {
                           <div>{item.completionTime}</div>
                           <div className="text-gray-400">
                             {item.averageClickTime}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-600 py-4">
+                        <div className="text-sm">
+                          <div>{item.createdDate}</div>
+                          <div className="text-gray-400">
+                            {item.updatedDate}
                           </div>
                         </div>
                       </TableCell>
