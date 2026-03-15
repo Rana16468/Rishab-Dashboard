@@ -1,4 +1,4 @@
-export const BASE_URL = process.env.BASE_URL || "http://98.90.213.99:3060";
+export const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://98.90.213.99:3060";
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -14,14 +14,14 @@ interface RequestOptions {
 }
 
 export const api = {
-  baseURL: BASE_URL,
+  baseURL: NEXT_PUBLIC_API_URL,
 
   // Generic request method
   request: async <T = any>(
     endpoint: string,
     options: RequestOptions = {},
   ): Promise<ApiResponse<T>> => {
-    const url = `${BASE_URL}${endpoint}`;
+    const url = `${NEXT_PUBLIC_API_URL}${endpoint}`;
 
     const config: RequestInit = {
       headers: {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { userApi } from "@/redux/Api/userApi";
 import conversationApi from "@/redux/Api/conversationApi";
-import { BASE_URL } from "@/redux/Api/baseApi";
+import { NEXT_PUBLIC_API_URL } from "@/redux/Api/baseApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -267,7 +267,7 @@ export default function ConversationPage() {
         // Helper to format date for filename
         const dtFormat = (dateStr: string) => {
           const d = new Date(dateStr);
-          return `${d.getFullYear()}${(d.getMonth()+1).toString().padStart(2, '0')}${d.getDate().toString().padStart(2, '0')}`;
+          return `${d.getFullYear()}${(d.getMonth() + 1).toString().padStart(2, "0")}${d.getDate().toString().padStart(2, "0")}`;
         };
 
         const userName = selectedUser?.nickname || selectedUser?.name || "User";
@@ -275,21 +275,21 @@ export default function ConversationPage() {
         for (let i = 0; i < audioConversations.length; i++) {
           const conv = audioConversations[i];
           const audioUrl = conv.audio_file;
-          
+
           try {
             // Fetch the file as a Blob to force download instead of opening a new tab
             const res = await fetch(audioUrl);
             const blob = await res.blob();
             const blobUrl = window.URL.createObjectURL(blob);
-            
+
             const a = document.createElement("a");
             a.href = blobUrl;
-            
+
             // Extract extension or default to mp3
             const extMatch = audioUrl.match(/\.([^.]+)$/);
-            const ext = extMatch ? extMatch[1] : 'mp3';
-            
-            a.download = `${userName.replace(/[^a-z0-9]/gi, '_')}_Audio_${dtFormat(conv.createdAt)}_${i + 1}.${ext}`;
+            const ext = extMatch ? extMatch[1] : "mp3";
+
+            a.download = `${userName.replace(/[^a-z0-9]/gi, "_")}_Audio_${dtFormat(conv.createdAt)}_${i + 1}.${ext}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -298,7 +298,10 @@ export default function ConversationPage() {
             // Small delay to prevent browser from blocking multiple simultaneous downloads
             await new Promise((resolve) => setTimeout(resolve, 300));
           } catch (err) {
-            console.error(`Failed to download audio for conversation ${conv._id}`, err);
+            console.error(
+              `Failed to download audio for conversation ${conv._id}`,
+              err,
+            );
           }
         }
       } else {
@@ -900,9 +903,11 @@ export default function ConversationPage() {
                         <div className="bg-gray-50 p-4 rounded-lg border">
                           <div className="flex items-center gap-3">
                             {(() => {
-                              const audioUrl = conv.audio_file?.startsWith("http")
+                              const audioUrl = conv.audio_file?.startsWith(
+                                "http",
+                              )
                                 ? conv.audio_file
-                                : `${BASE_URL}${conv.audio_file}`;
+                                : `${NEXT_PUBLIC_API_URL}${conv.audio_file}`;
 
                               return (
                                 <audio
@@ -945,7 +950,7 @@ export default function ConversationPage() {
                                 variant="outline"
                                 onClick={() =>
                                   handleDownloadPDF(
-                                    `${BASE_URL}${conv.pdf_file}`,
+                                    `${NEXT_PUBLIC_API_URL}${conv.pdf_file}`,
                                   )
                                 }
                                 className="shrink-0"

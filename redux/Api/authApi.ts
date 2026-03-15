@@ -1,4 +1,4 @@
-import { api, BASE_URL } from "./baseApi";
+import { api, NEXT_PUBLIC_API_URL } from "./baseApi";
 
 // Types
 interface LoginCredentials {
@@ -225,13 +225,16 @@ export const authApi = {
       formData.append("file", file);
     }
 
-    const response = await fetch(`${BASE_URL}/api/v1/auth/update_my_profile`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `${token}`,
+    const response = await fetch(
+      `${NEXT_PUBLIC_API_URL}/api/v1/auth/update_my_profile`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `${token}`,
+        },
+        body: formData,
       },
-      body: formData,
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
