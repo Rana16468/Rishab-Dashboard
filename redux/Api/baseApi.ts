@@ -1,4 +1,4 @@
-export const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://98.90.213.99:3060";
+export const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface ApiResponse<T = any> {
   success: boolean;
