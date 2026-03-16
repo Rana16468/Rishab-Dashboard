@@ -38,6 +38,7 @@ import {
   AlertTriangle,
   Calendar,
   FileAudio,
+  FileText,
   Tag,
   Download,
   Play,
@@ -45,6 +46,9 @@ import {
   Delete,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+import { toast } from "sonner";
 
 interface User {
   _id: string;
@@ -120,6 +124,192 @@ export default function ConversationPage() {
   >(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement | null }>({});
+
+  // Function to download all conversations for a user as Excel
+  const downloadUserAllConversationsExcel = async (
+    userId: string | undefined,
+    userName: string,
+  ) => {
+    if (!userId) return;
+
+    try {
+      toast.info(`Downloading all conversations for ${userName}...`);
+      setIsDownloadingAll(true);
+
+      // Fetch all conversations by passing a large limit
+      const response = await conversationApi.findAllConversationsByUser(
+        userId,
+        1,
+        1000,
+      );
+
+      if (response && response.all_conversation_memories) {
+        const conversations = response.all_conversation_memories;
+
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+
+        // Summary Sheet
+        const summaryData = conversations.map((conv: any, index: number) => ({
+          "SL No": index + 1,
+          "User Text": conv.userText || "",
+          Reply: conv.reply || "",
+          "Question Category": conv.question_category || "",
+          "Conversation Topic": conv.conversation_topic || "",
+          "ICOPE Health Trigger": conv.icope_health_trigger ? "Yes" : "No",
+          "Mental Distress": conv.mental_distress ? "Yes" : "No",
+          Summary: conv.summary || "",
+          "Has Audio": conv.audio_file ? "Yes" : "No",
+          "Has PDF": conv.pdf_file ? "Yes" : "No",
+          "Created At": conv.createdAt
+            ? new Date(conv.createdAt).toLocaleString()
+            : "",
+        }));
+
+        const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+        wsSummary["!cols"] = [
+          { wch: 8 },
+          { wch: 30 },
+          { wch: 40 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 15 },
+          { wch: 15 },
+          { wch: 50 },
+          { wch: 10 },
+          { wch: 10 },
+          { wch: 20 },
+        ];
+        XLSX.utils.book_append_sheet(
+          wb,
+          wsSummary,
+          "All Conversations Summary",
+        );
+
+        // Detailed sheets for each conversation
+        conversations.forEach((conv: any, index: number) => {
+          const sheetName = `Conv_${index + 1}`.substring(0, 25);
+
+          const convDetails = [
+            ["Conversation ID", conv._id || ""],
+            ["User Text", conv.userText || ""],
+            ["Reply", conv.reply || ""],
+            ["Question Category", conv.question_category || ""],
+            ["Conversation Topic", conv.conversation_topic || ""],
+            ["ICOPE Health Trigger", conv.icope_health_trigger ? "Yes" : "No"],
+            ["Mental Distress", conv.mental_distress ? "Yes" : "No"],
+            ["Summary", conv.summary || ""],
+            ["Audio File", conv.audio_file || ""],
+            ["PDF File", conv.pdf_file || ""],
+            [
+              "Created At",
+              conv.createdAt ? new Date(conv.createdAt).toLocaleString() : "",
+            ],
+            [
+              "Updated At",
+              conv.updatedAt ? new Date(conv.updatedAt).toLocaleString() : "",
+            ],
+          ];
+
+          const wsConv = XLSX.utils.aoa_to_sheet(convDetails);
+          wsConv["!cols"] = [{ wch: 20 }, { wch: 50 }];
+          XLSX.utils.book_append_sheet(wb, wsConv, sheetName);
+        });
+
+        // Generate and download Excel file
+        const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+        const blob = new Blob([excelBuffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+
+        const fileName = `${userName}_All_Conversations_${new Date().toISOString().split("T")[0]}.xlsx`;
+        saveAs(blob, fileName);
+
+        toast.success(
+          `Successfully downloaded ${conversations.length} conversations for ${userName}`,
+        );
+      } else {
+        toast.error("No conversations found for this user");
+      }
+    } catch (error) {
+      console.error("Error downloading conversations Excel:", error);
+      toast.error("Failed to download conversations");
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  };
+
+  // Function to download all audio files for a user as ZIP
+  const downloadUserAllAudioZip = async (
+    userId: string | undefined,
+    userName: string,
+  ) => {
+    if (!userId) return;
+
+    try {
+      toast.info(`Downloading all audio files for ${userName}...`);
+      setIsDownloadingAll(true);
+
+      // Fetch all conversations by passing a large limit
+      const response = await conversationApi.findAllConversationsByUser(
+        userId,
+        1,
+        1000,
+      );
+
+      if (response && response.all_conversation_memories) {
+        const audioConversations = response.all_conversation_memories.filter(
+          (conv) => conv.audio_file,
+        );
+
+        if (audioConversations.length === 0) {
+          toast.info("No audio files found for this user");
+          return;
+        }
+
+        const zip = new JSZip();
+        const audioPromises: Promise<void>[] = [];
+
+        audioConversations.forEach((conv: any, index: number) => {
+          if (conv.audio_file) {
+            const audioPromise = fetch(conv.audio_file)
+              .then((response) => response.blob())
+              .then((blob) => {
+                const fileName = `Conversation_${index + 1}_${new Date(conv.createdAt).toISOString().split("T")[0]}.webm`;
+                zip.file(fileName, blob);
+              })
+              .catch((error) =>
+                console.error(
+                  `Failed to fetch audio for ${conv.audio_file}:`,
+                  error,
+                ),
+              );
+
+            audioPromises.push(audioPromise);
+          }
+        });
+
+        // Wait for all audio files to be downloaded
+        await Promise.all(audioPromises);
+
+        // Generate ZIP file
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        const fileName = `${userName}_All_Audio_Files_${new Date().toISOString().split("T")[0]}.zip`;
+        saveAs(zipBlob, fileName);
+
+        toast.success(
+          `Successfully downloaded ${audioConversations.length} audio files for ${userName}`,
+        );
+      } else {
+        toast.error("No conversations found for this user");
+      }
+    } catch (error) {
+      console.error("Error downloading audio ZIP:", error);
+      toast.error("Failed to download audio files");
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  };
 
   // Fetch users
   const fetchUsers = async () => {
@@ -490,6 +680,27 @@ export default function ConversationPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Button Legend */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              Button Actions:
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-purple-600" />
+                <span>View Conversations</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-green-600" />
+                <span>Download All User Excel</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FileAudio className="w-4 h-4 text-blue-600" />
+                <span>Download All User Audio (ZIP)</span>
+              </div>
+            </div>
+          </div>
+
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
@@ -601,14 +812,46 @@ export default function ConversationPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        onClick={() => handleUserAction(user.id)}
-                        className="bg-linear-to-r from-[#4c2e6f] to-[#6e5897] hover:opacity-90 text-white shadow-md transition-all"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Chat
-                      </Button>
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          onClick={() => handleUserAction(user.id)}
+                          className="bg-linear-to-r from-[#4c2e6f] to-[#6e5897] hover:opacity-90 text-white shadow-md transition-all"
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Chat
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            downloadUserAllConversationsExcel(
+                              user.id,
+                              user.nickname || user.name || "User",
+                            )
+                          }
+                          className="text-green-600 border-green-600 hover:bg-green-50"
+                          title="Download all conversations as Excel"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            downloadUserAllAudioZip(
+                              user.id,
+                              user.nickname || user.name || "User",
+                            )
+                          }
+                          className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                          title="Download all audio files as ZIP"
+                        >
+                          <FileAudio className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -694,23 +937,40 @@ export default function ConversationPage() {
                       )}
                     </p>
                   </div>
-                  <Button
-                    onClick={() => handleDownloadAllAudio(selectedUser?.id)}
-                    disabled={isDownloadingAll || totalConversations === 0}
-                    className="ml-4 bg-linear-to-r from-[#5f17d4] to-[#6557b9] hover:from-[#4d13ab] hover:to-[#524696] text-white shadow-md transition-all gap-2"
-                  >
-                    {isDownloadingAll ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Downloading...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4" />
-                        Download All Audio
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={() =>
+                        downloadUserAllConversationsExcel(
+                          selectedUser?.id,
+                          selectedUser?.nickname ||
+                            selectedUser?.name ||
+                            "User",
+                        )
+                      }
+                      disabled={isDownloadingAll || totalConversations === 0}
+                      className="bg-green-600 hover:bg-green-700 text-white shadow-md transition-all"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Download Excel
+                    </Button>
+                    <Button
+                      onClick={() => handleDownloadAllAudio(selectedUser?.id)}
+                      disabled={isDownloadingAll || totalConversations === 0}
+                      className="bg-linear-to-r from-[#5f17d4] to-[#6557b9] hover:from-[#4d13ab] hover:to-[#524696] text-white shadow-md transition-all gap-2"
+                    >
+                      {isDownloadingAll ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                          <FileAudio className="w-4 h-4" />
+                          Download All Audio
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <Badge variant="outline" className="text-sm px-3 py-1">
                   {totalConversations} conversations
