@@ -37,6 +37,18 @@ const userResearchApi = {
       throw error;
     }
   },
+
+  getResearcherUserByUserId: async (userId: string) => {
+    try {
+      const response = await api.get(
+        `/api/v1/game_one/find_by_researcher_user?userId=${userId}&limit=1000`,
+      );
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
 };
 
 export default userResearchApi;

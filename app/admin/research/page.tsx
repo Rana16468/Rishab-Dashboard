@@ -29,11 +29,14 @@ import {
   Download,
   Delete,
   X,
+  Music,
 } from "lucide-react";
 import { buttonbg, textPrimary } from "@/contexts/theme";
 import userResearchApi from "@/redux/Api/userResearchApi";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import JSZip from "jszip";
+import { toast } from "sonner";
 
 export default function ContentsPage() {
   const { user, isAuthenticated } = useAuth();
@@ -78,7 +81,334 @@ export default function ContentsPage() {
     setDeleteConfirm({ show: false, sessionId: null });
   };
 
-  // Function to download all current page data as Excel (row by row format)
+  // Function to download all Excel data for a specific user
+  const downloadUserAllExcelData = async (
+    userId: string,
+    userNickname: string,
+  ) => {
+    try {
+      toast.info(`Downloading all Excel data for ${userNickname}...`);
+      setLoading(true);
+
+      // Fetch all data for this user
+      const response = await userResearchApi.getResearcherUserByUserId(userId);
+
+      if (!response.success || !response.data) {
+        console.error("Failed to fetch user data");
+        toast.error("Failed to fetch user data");
+        return;
+      }
+
+      // Handle the response structure similar to fetchResearchData
+      const userSessions = response?.data?.result?.[0]?.data ?? [];
+
+      if (!Array.isArray(userSessions)) {
+        console.error("User sessions is not an array:", userSessions);
+        toast.error("Invalid user data format");
+        return;
+      }
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // 1. Summary Sheet
+      const summaryData = userSessions.map((session: any, index: number) => ({
+        "SL No": index + 1,
+        "Session ID":
+          session.originalData?.sessionId || session.sessionId || "",
+        "Game Mode": session.originalData?.gameMode || session.gameMode || "",
+        Difficulty:
+          session.originalData?.gameData?.difficulty ||
+          session.gameData?.difficulty ||
+          "",
+        Stage:
+          session.originalData?.gameData?.stage ||
+          session.gameData?.stage ||
+          "",
+        "Completion Time":
+          session.originalData?.gameData?.completionTime ||
+          session.gameData?.completionTime ||
+          "",
+        "Hints Used":
+          session.originalData?.gameData?.metrics?.totalHintsUsed ||
+          session.gameData?.metrics?.totalHintsUsed ||
+          "",
+        "Accuracy %":
+          session.originalData?.gameData?.metrics?.accuracyPercentage ||
+          session.gameData?.metrics?.accuracyPercentage ||
+          "",
+        "Total Clicks":
+          session.originalData?.gameData?.rawTileClicks?.length ||
+          session.gameData?.rawTileClicks?.length ||
+          0,
+        "Correct Clicks":
+          session.originalData?.gameData?.rawTileClicks?.filter(
+            (click: any) => click.wasCorrect,
+          ).length ||
+          session.gameData?.rawTileClicks?.filter(
+            (click: any) => click.wasCorrect,
+          ).length ||
+          0,
+        "Incorrect Clicks":
+          session.originalData?.gameData?.rawTileClicks?.filter(
+            (click: any) => !click.wasCorrect,
+          ).length ||
+          session.gameData?.rawTileClicks?.filter(
+            (click: any) => !click.wasCorrect,
+          ).length ||
+          0,
+        "Average Click Time": session.averageClickTime || "",
+        "Created At":
+          session.originalData?.createdAt || session.createdAt
+            ? new Date(
+                session.originalData?.createdAt || session.createdAt,
+              ).toLocaleString()
+            : "",
+        Status:
+          session.originalData?.gameData?.completionTime ||
+          session.gameData?.completionTime
+            ? "Completed"
+            : "Incomplete",
+      }));
+
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      wsSummary["!cols"] = [
+        { wch: 8 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 8 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 20 },
+        { wch: 12 },
+      ];
+      XLSX.utils.book_append_sheet(wb, wsSummary, "All Sessions Summary");
+
+      // 2. Detailed sheets for each session
+      userSessions.forEach((session: any, sessionIndex: number) => {
+        const sessionId = (
+          session.originalData?.sessionId ||
+          session.sessionId ||
+          `Session ${sessionIndex + 1}`
+        ).substring(0, 25);
+
+        // Session details
+        const sessionDetails = [
+          [
+            "Session ID",
+            session.originalData?.sessionId || session.sessionId || "",
+          ],
+          [
+            "Game Mode",
+            session.originalData?.gameMode || session.gameMode || "",
+          ],
+          [
+            "User ID",
+            session.originalData?.user?.userId || session.user?.userId || "",
+          ],
+          [
+            "Nickname",
+            session.originalData?.user?.nickname ||
+              session.user?.nickname ||
+              "",
+          ],
+          ["Age", session.originalData?.user?.age || session.user?.age || ""],
+          [
+            "Gender",
+            session.originalData?.user?.gender || session.user?.gender || "",
+          ],
+          [
+            "Hobbies",
+            (
+              session.originalData?.user?.hobbies ||
+              session.user?.hobbies ||
+              []
+            ).join(", "),
+          ],
+          [
+            "Languages",
+            (
+              session.originalData?.user?.language ||
+              session.user?.language ||
+              []
+            ).join(", "),
+          ],
+          [
+            "Difficulty",
+            session.originalData?.gameData?.difficulty ||
+              session.gameData?.difficulty ||
+              "",
+          ],
+          [
+            "Stage",
+            session.originalData?.gameData?.stage ||
+              session.gameData?.stage ||
+              "",
+          ],
+          [
+            "Completion Time",
+            session.originalData?.gameData?.completionTime ||
+              session.gameData?.completionTime ||
+              "",
+          ],
+          [
+            "Created At",
+            session.originalData?.createdAt || session.createdAt
+              ? new Date(
+                  session.originalData?.createdAt || session.createdAt,
+                ).toLocaleString()
+              : "",
+          ],
+        ];
+
+        const wsSession = XLSX.utils.aoa_to_sheet(sessionDetails);
+        wsSession["!cols"] = [{ wch: 20 }, { wch: 40 }];
+        XLSX.utils.book_append_sheet(wb, wsSession, sessionId);
+
+        // Click details for this session
+        const clickHeaders = [
+          "Click No",
+          "Sprite Name",
+          "Correct",
+          "Response Time",
+        ];
+        const clickData =
+          (
+            session.originalData?.gameData?.rawTileClicks ||
+            session.gameData?.rawTileClicks
+          )?.map((click: any, index: number) => [
+            index + 1,
+            click.spriteName || "",
+            click.wasCorrect ? "Yes" : "No",
+            click.clickTime || "",
+          ]) || [];
+
+        const wsClicks = XLSX.utils.aoa_to_sheet([clickHeaders, ...clickData]);
+        wsClicks["!cols"] = [
+          { wch: 10 },
+          { wch: 20 },
+          { wch: 10 },
+          { wch: 15 },
+        ];
+        XLSX.utils.book_append_sheet(
+          wb,
+          wsClicks,
+          `${sessionId.substring(0, 20)}-Clicks`,
+        );
+      });
+
+      // Generate and download Excel file
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const fileName = `${userNickname}_All_Sessions_${new Date().toISOString().split("T")[0]}.xlsx`;
+      saveAs(blob, fileName);
+
+      toast.success(
+        `Successfully downloaded ${userSessions.length} sessions for ${userNickname}`,
+      );
+    } catch (error) {
+      console.error("Error downloading user Excel data:", error);
+      toast.error("Failed to download Excel data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to download all audio files for a user as ZIP
+  const downloadUserAllAudioFiles = async (
+    userId: string,
+    userNickname: string,
+  ) => {
+    try {
+      toast.info(`Downloading all audio files for ${userNickname}...`);
+      setLoading(true);
+
+      // Fetch all data for this user
+      const response = await userResearchApi.getResearcherUserByUserId(userId);
+
+      if (!response.success || !response.data) {
+        console.error("Failed to fetch user data");
+        toast.error("Failed to fetch user data");
+        return;
+      }
+
+      // Handle the response structure similar to fetchResearchData
+      const userSessions = response?.data?.result?.[0]?.data ?? [];
+
+      if (!Array.isArray(userSessions)) {
+        console.error("User sessions is not an array:", userSessions);
+        toast.error("Invalid user data format");
+        return;
+      }
+
+      const zip = new JSZip();
+      const audioPromises: Promise<void>[] = [];
+      let totalAudioFiles = 0;
+
+      userSessions.forEach((session: any, sessionIndex: number) => {
+        const sessionId =
+          session.originalData?.sessionId ||
+          session.sessionId ||
+          `Session ${sessionIndex + 1}`;
+        const conversationData =
+          session.originalData?.conversationData ||
+          session.conversationData ||
+          [];
+
+        conversationData.forEach((conv: any, convIndex: number) => {
+          if (conv.audioUrl) {
+            totalAudioFiles++;
+            const audioPromise = fetch(conv.audioUrl)
+              .then((response) => response.blob())
+              .then((blob) => {
+                const fileName = `${sessionId}_Conversation_${convIndex + 1}.webm`;
+                zip.file(fileName, blob);
+              })
+              .catch((error) =>
+                console.error(
+                  `Failed to fetch audio for ${conv.audioUrl}:`,
+                  error,
+                ),
+              );
+
+            audioPromises.push(audioPromise);
+          }
+        });
+      });
+
+      if (totalAudioFiles === 0) {
+        toast.info(`No audio files found for ${userNickname}`);
+        setLoading(false);
+        return;
+      }
+
+      // Wait for all audio files to be downloaded
+      await Promise.all(audioPromises);
+
+      // Generate ZIP file
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const fileName = `${userNickname}_All_Audio_Files_${new Date().toISOString().split("T")[0]}.zip`;
+      saveAs(zipBlob, fileName);
+
+      toast.success(
+        `Successfully downloaded ${totalAudioFiles} audio files for ${userNickname}`,
+      );
+    } catch (error) {
+      console.error("Error downloading user audio files:", error);
+      toast.error("Failed to download audio files");
+    } finally {
+      setLoading(false);
+    }
+  };
   const downloadAllCurrentPageAsExcel = () => {
     // Create workbook
     const wb = XLSX.utils.book_new();
@@ -483,6 +813,37 @@ export default function ContentsPage() {
       {/* Content Table */}
       {!loading && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden min-h-[500px] flex flex-col justify-between">
+          {/* Button Legend */}
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700">
+                Action Buttons:
+              </h3>
+              <div className="flex items-center gap-6 text-xs text-gray-600">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-gray-500" />
+                  <span>View Details</span>
+                </div>
+                {/* <div className="flex items-center gap-2">
+                  <Download className="w-4 h-4 text-gray-500" />
+                  <span>Download Session</span>
+                </div> */}
+                <div className="flex items-center gap-2">
+                  <Download className="w-4 h-4 text-green-600" />
+                  <span>Download All User Excel</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Music className="w-4 h-4 text-blue-600" />
+                  <span>Download All User Audio (ZIP)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Delete className="w-4 h-4 text-red-500" />
+                  <span>Delete Session</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-white">
@@ -623,26 +984,54 @@ export default function ContentsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="py-4 pr-6">
-                        <div className="flex items-center justify-end gap-3">
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => {
                               setSelectedSession(item.originalData);
                               setShowDetails(true);
                             }}
                             className="text-gray-500 hover:text-gray-700 transition-colors"
+                            title="View details"
                           >
                             <Eye className="w-5 h-5" />
                           </button>
 
-                          <button
+                          {/* <button
                             onClick={() =>
                               downloadSessionAsExcel(item.originalData)
                             }
                             className="text-gray-500 hover:text-gray-700 transition-colors"
-                            title="Download as Excel"
+                            title="Download this session as Excel"
+                          >
+                            <Download className="w-5 h-5" />
+                          </button> */}
+
+                          <button
+                            onClick={() =>
+                              downloadUserAllExcelData(
+                                item.originalData?.user?.userId,
+                                item.originalData?.user?.nickname,
+                              )
+                            }
+                            className="text-green-600 hover:text-green-700 transition-colors"
+                            title="Download all Excel data for this user"
                           >
                             <Download className="w-5 h-5" />
                           </button>
+
+                          <button
+                            onClick={() =>
+                              downloadUserAllAudioFiles(
+                                item.originalData?.user?.userId,
+                                item.originalData?.user?.nickname,
+                              )
+                            }
+                            className="text-blue-600 hover:text-blue-700 transition-colors"
+                            title="Download all audio files for this user as ZIP"
+                          >
+                            <Music className="w-5 h-5" />
+                          </button>
+
                           <button
                             onClick={() =>
                               deleteResearchSession(item.originalData.sessionId)
