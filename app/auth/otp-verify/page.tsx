@@ -74,6 +74,7 @@ function VerificationCode() {
               id: payload.id,
               email: payload.email,
               role: payload.role,
+              name: payload.name || payload.email,
             };
             dispatch(loginSuccess({ user, token: accessToken }));
 
@@ -84,6 +85,10 @@ function VerificationCode() {
               email: payload.email,
               token: accessToken,
             });
+
+            // Set cookie for middleware to read
+            document.cookie = `token=${accessToken}; path=/; max-age=86400; SameSite=Lax`;
+            document.cookie = `userRole=${payload.role}; path=/; max-age=86400; SameSite=Lax`;
           } else {
             throw new Error("Invalid token format");
           }
@@ -151,7 +156,6 @@ function VerificationCode() {
                 />
               </div>
             </div>
-         
           </div>
         </div>
       </div>

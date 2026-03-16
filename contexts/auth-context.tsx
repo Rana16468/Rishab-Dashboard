@@ -65,6 +65,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("role", role);
     localStorage.setItem("fullName", fullName);
 
+    // Set cookies for middleware
+    document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
+    document.cookie = `userRole=${role}; path=/; max-age=86400; SameSite=Lax`;
+
     setUser({ role, fullName, email });
     setIsAuthenticated(true);
   };
@@ -72,6 +76,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     const email = localStorage.getItem("email");
     localStorage.clear();
+
+    // Clear cookies
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie =
+      "userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
     setUser({ role: "", fullName: "", email: email || "" });
     setIsAuthenticated(false);
   };
