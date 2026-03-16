@@ -18,7 +18,7 @@ export default function MainHeader({ toggleSidebar }: MainHeaderProps) {
   const { user } = useAuth();
   const [profileData, setProfileData] = useState<any>(null);
 
-  // Dummy unread count
+ 
   const unreadCount = 3;
 
   useEffect(() => {
