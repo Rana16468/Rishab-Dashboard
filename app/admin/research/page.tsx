@@ -49,6 +49,14 @@ export default function ContentsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [allUserSessions, setAllUserSessions] = useState<any[]>([]);
+  const [loadingAllSessions, setLoadingAllSessions] = useState(false);
+  // Modal pagination states
+  const [modalPage, setModalPage] = useState(1);
+  const [modalLimit, setModalLimit] = useState(10);
+  const [modalTotalItems, setModalTotalItems] = useState(0);
+  const [modalTotalPages, setModalTotalPages] = useState(1);
+  const [modalUserId, setModalUserId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{
     show: boolean;
@@ -81,7 +89,45 @@ export default function ContentsPage() {
     setDeleteConfirm({ show: false, sessionId: null });
   };
 
-  // Function to download all Excel data for a specific user
+  // Function to fetch all sessions for a user when viewing details with pagination
+  const fetchAllUserSessionsForModal = async (
+    userId: string,
+    pageNum: number = 1,
+    pageLimit: number = 10,
+  ) => {
+    if (!userId) return;
+
+    setModalUserId(userId);
+    setLoadingAllSessions(true);
+    try {
+      const response = await userResearchApi.getSpecificResearcherUserById(
+        userId,
+        pageNum,
+        pageLimit,
+      );
+
+      if (response.success && response.data) {
+        const sessions = response?.data?.result?.[0]?.data ?? [];
+        const total = response?.data?.result?.[0]?.meta?.[0]?.total || 0;
+        setAllUserSessions(sessions);
+        setModalTotalItems(total);
+        setModalTotalPages(Math.ceil(total / pageLimit));
+      } else {
+        setAllUserSessions([]);
+        setModalTotalItems(0);
+        setModalTotalPages(1);
+      }
+    } catch (error) {
+      console.error("Error fetching all user sessions:", error);
+      setAllUserSessions([]);
+      setModalTotalItems(0);
+      setModalTotalPages(1);
+    } finally {
+      setLoadingAllSessions(false);
+    }
+  };
+
+  // Function to open modal with all user data
   const downloadUserAllExcelData = async (
     userId: string,
     userNickname: string,
@@ -90,8 +136,12 @@ export default function ContentsPage() {
       toast.info(`Downloading all Excel data for ${userNickname}...`);
       setLoading(true);
 
-      // Fetch all data for this user
-      const response = await userResearchApi.getResearcherUserByUserId(userId);
+      // Fetch all data for this user using the new specific API
+      const response = await userResearchApi.getSpecificResearcherUserById(
+        userId,
+        1,
+        1000,
+      );
 
       if (!response.success || !response.data) {
         console.error("Failed to fetch user data");
@@ -332,8 +382,12 @@ export default function ContentsPage() {
       toast.info(`Downloading all audio files for ${userNickname}...`);
       setLoading(true);
 
-      // Fetch all data for this user
-      const response = await userResearchApi.getResearcherUserByUserId(userId);
+      // Fetch all data for this user using the new specific API
+      const response = await userResearchApi.getSpecificResearcherUserById(
+        userId,
+        1,
+        1000,
+      );
 
       if (!response.success || !response.data) {
         console.error("Failed to fetch user data");
@@ -648,6 +702,107 @@ export default function ContentsPage() {
     const fileName = `session_${sessionData.sessionId || "data"}.xlsx`;
 
     XLSX.writeFile(wb, fileName);
+  };
+
+  // Function to download all sessions as Excel from modal
+  const downloadAllSessionsFromModal = () => {
+    if (!allUserSessions || allUserSessions.length === 0) return;
+
+    const wb = XLSX.utils.book_new();
+    const userNickname = selectedSession?.user?.nickname || "User";
+
+    // 1. Summary Sheet - All Sessions
+    const summaryData = allUserSessions.map((session: any, index: number) => ({
+      "SL No": index + 1,
+      "Session ID": session.sessionId || "",
+      "Game Mode": session.gameMode || "",
+      "Game Mode Full": session.gameModeFullMeaning || "",
+      Difficulty: session.gameData?.difficulty || "",
+      Stage: session.gameData?.stage || "",
+      "Completion Time": session.gameData?.completionTime || "",
+      "Hints Used": session.gameData?.metrics?.totalHintsUsed || 0,
+      "Accuracy %": session.gameData?.metrics?.accuracyPercentage || 0,
+      "Total Clicks": session.gameData?.rawTileClicks?.length || 0,
+      "Correct Clicks":
+        session.gameData?.rawTileClicks?.filter((c: any) => c.wasCorrect)
+          .length || 0,
+      "Incorrect Clicks":
+        session.gameData?.rawTileClicks?.filter((c: any) => !c.wasCorrect)
+          .length || 0,
+      "Created At": session.createdAt
+        ? new Date(session.createdAt).toLocaleString()
+        : "",
+      "Updated At": session.updatedAt
+        ? new Date(session.updatedAt).toLocaleString()
+        : "",
+    }));
+
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    wsSummary["!cols"] = [
+      { wch: 8 },
+      { wch: 25 },
+      { wch: 12 },
+      { wch: 30 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 20 },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsSummary, "All Sessions Summary");
+
+    // 2. Detailed Sessions Sheet
+    allUserSessions.forEach((session: any, sessionIndex: number) => {
+      const sheetName = `Session_${sessionIndex + 1}`.substring(0, 25);
+
+      const sessionDetails = [
+        ["Session ID", session.sessionId || ""],
+        ["Game Mode", session.gameMode || ""],
+        ["Game Mode Full", session.gameModeFullMeaning || ""],
+        ["Difficulty", session.gameData?.difficulty || ""],
+        ["Stage", session.gameData?.stage || ""],
+        ["Completion Time", session.gameData?.completionTime || ""],
+        ["Accuracy %", session.gameData?.metrics?.accuracyPercentage || ""],
+        ["Hints Used", session.gameData?.metrics?.totalHintsUsed || ""],
+        ["Instruction", session.gameData?.metrics?.instructionText || ""],
+        [
+          "Created At",
+          session.createdAt ? new Date(session.createdAt).toLocaleString() : "",
+        ],
+        [
+          "Updated At",
+          session.updatedAt ? new Date(session.updatedAt).toLocaleString() : "",
+        ],
+        ["", ""],
+        ["Click Details", ""],
+        ["Click No", "Sprite Name", "Correct", "Response Time"],
+        ...(session.gameData?.rawTileClicks?.map(
+          (click: any, index: number) => [
+            index + 1,
+            click.spriteName || "",
+            click.wasCorrect ? "Yes" : "No",
+            click.clickTime || "",
+          ],
+        ) || []),
+      ];
+
+      const wsSession = XLSX.utils.aoa_to_sheet(sessionDetails);
+      wsSession["!cols"] = [{ wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, wsSession, sheetName);
+    });
+
+    // Generate and download file
+    const fileName = `${userNickname}_All_${allUserSessions.length}_Sessions_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    toast.success(
+      `Downloaded ${allUserSessions.length} sessions for ${userNickname}`,
+    );
   };
 
   useEffect(() => {
@@ -988,6 +1143,13 @@ export default function ContentsPage() {
                           <button
                             onClick={() => {
                               setSelectedSession(item.originalData);
+                              setModalPage(1);
+                              setModalLimit(10);
+                              fetchAllUserSessionsForModal(
+                                item.originalData?.user?.userId,
+                                1,
+                                10,
+                              );
                               setShowDetails(true);
                             }}
                             className="text-gray-500 hover:text-gray-700 transition-colors"
@@ -1006,7 +1168,7 @@ export default function ContentsPage() {
                             <Download className="w-5 h-5" />
                           </button> */}
 
-                          <button
+                          {/* <button
                             onClick={() =>
                               downloadUserAllExcelData(
                                 item.originalData?.user?.userId,
@@ -1017,7 +1179,7 @@ export default function ContentsPage() {
                             title="Download all Excel data for this user"
                           >
                             <Download className="w-5 h-5" />
-                          </button>
+                          </button> */}
 
                           <button
                             onClick={() =>
@@ -1239,18 +1401,23 @@ export default function ContentsPage() {
       {/* Session Details Modal */}
       {showDetails && selectedSession && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden animate-slide-up">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden animate-slide-up flex flex-col">
             {/* Header */}
-            <div className="bg-linear-to-r from-blue-600 to-purple-600 text-white p-6">
+            <div className="bg-linear-to-r from-blue-600 to-purple-600 text-white p-6 flex-shrink-0">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">Session Details</h2>
+                  <h2 className="text-2xl font-bold mb-2">
+                    User: {selectedSession.user?.nickname || "Unknown"}
+                  </h2>
                   <p className="text-blue-100 text-sm">
-                    Complete analysis of research session
+                    User ID: {selectedSession.user?.userId} • All Sessions Data
                   </p>
                 </div>
                 <button
-                  onClick={() => setShowDetails(false)}
+                  onClick={() => {
+                    setShowDetails(false);
+                    setAllUserSessions([]);
+                  }}
                   className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-2 transition-all duration-200"
                 >
                   <X className="w-6 h-6" />
@@ -1258,61 +1425,322 @@ export default function ContentsPage() {
               </div>
             </div>
 
-            {/* Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column - Session & User Info */}
-                <div className="lg:col-span-1 space-y-6">
-                  {/* Session Info */}
-                  <div className="bg-linear-to-br from-gray-50 to-gray-100 rounded-xl p-5 border border-gray-200">
-                    <h3 className="font-semibold text-gray-900 mb-2">
-                      Session Info
-                    </h3>
-                    <p>Session ID: {selectedSession.sessionId}</p>
-                    <p>Game Mode: {selectedSession.gameMode}</p>
-                  </div>
-
-                  {/* User Info */}
-                  <div className="bg-linear-to-br from-blue-50 to-indigo-100 rounded-xl p-5 border border-blue-200">
-                    <h3 className="font-semibold text-gray-900 mb-2">
-                      User Profile
-                    </h3>
-                    <p>Nickname: {selectedSession.user?.nickname}</p>
-                    <p>User ID: {selectedSession.user?.userId}</p>
-                    <p>Age: {selectedSession.user?.age}</p>
-                    <p>Gender: {selectedSession.user?.gender}</p>
-                  </div>
+            {/* Content - Scrollable */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {loadingAllSessions ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">
+                    Loading all sessions...
+                  </span>
                 </div>
-
-                {/* Right Column - Performance */}
-                <div className="lg:col-span-2 space-y-6">
-                  {/* Performance Metrics */}
-                  <div className="bg-linear-to-br from-green-50 to-emerald-100 rounded-xl p-5 border border-green-200">
-                    <h3 className="font-semibold text-gray-900 mb-2">
-                      Performance Metrics
+              ) : (
+                <div className="space-y-6">
+                  {/* User Profile Summary */}
+                  <div className="bg-linear-to-br from-blue-50 to-indigo-100 rounded-xl p-5 border border-blue-200">
+                    <h3 className="font-semibold text-gray-900 mb-4 text-lg">
+                      User Profile Summary
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-white rounded-lg p-3 text-center">
-                        Accuracy:{" "}
-                        {selectedSession.gameData?.metrics?.accuracyPercentage}%
+                      <div className="bg-white rounded-lg p-3">
+                        <p className="text-sm text-gray-500">Nickname</p>
+                        <p className="font-semibold">
+                          {selectedSession.user?.nickname}
+                        </p>
                       </div>
-                      <div className="bg-white rounded-lg p-3 text-center">
-                        Time: {selectedSession.gameData?.completionTime}s
+                      <div className="bg-white rounded-lg p-3">
+                        <p className="text-sm text-gray-500">User ID</p>
+                        <p className="font-semibold text-xs">
+                          {selectedSession.user?.userId}
+                        </p>
                       </div>
-                      <div className="bg-white rounded-lg p-3 text-center">
-                        Hints:{" "}
-                        {selectedSession.gameData?.metrics?.totalHintsUsed}
+                      <div className="bg-white rounded-lg p-3">
+                        <p className="text-sm text-gray-500">Age</p>
+                        <p className="font-semibold">
+                          {selectedSession.user?.age || "N/A"}
+                        </p>
                       </div>
-                      <div className="bg-white rounded-lg p-3 text-center">
-                        Level: {selectedSession.gameData?.difficulty}
+                      <div className="bg-white rounded-lg p-3">
+                        <p className="text-sm text-gray-500">Gender</p>
+                        <p className="font-semibold">
+                          {selectedSession.user?.gender || "N/A"}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3">
+                        <p className="text-sm text-gray-500">Total Sessions</p>
+                        <p className="font-semibold">
+                          {allUserSessions.length}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3">
+                        <p className="text-sm text-gray-500">Hobbies</p>
+                        <p className="font-semibold text-xs">
+                          {(selectedSession.user?.hobbies || []).join(", ")}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 col-span-2">
+                        <p className="text-sm text-gray-500">Languages</p>
+                        <p className="font-semibold text-xs">
+                          {(selectedSession.user?.language || []).join(", ")}
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Click Analysis */}
+                  {/* All Sessions List */}
+                  {allUserSessions.length > 0 && (
+                    <div className="bg-linear-to-br from-gray-50 to-gray-100 rounded-xl p-5 border border-gray-200">
+                      <h3 className="font-semibold text-gray-900 mb-4 text-lg">
+                        All Sessions ({allUserSessions.length})
+                      </h3>
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                        {allUserSessions.map((session: any, index: number) => (
+                          <div
+                            key={session.sessionId || index}
+                            className={`bg-white rounded-lg p-4 border-2 ${
+                              session.sessionId === selectedSession.sessionId
+                                ? "border-blue-500 ring-2 ring-blue-200"
+                                : "border-gray-200"
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h4 className="font-semibold text-gray-900">
+                                  Session #{index + 1}: {session.sessionId}
+                                </h4>
+                                <p className="text-sm text-gray-500">
+                                  Game Mode: {session.gameMode} • Created:{" "}
+                                  {session.createdAt
+                                    ? new Date(
+                                        session.createdAt,
+                                      ).toLocaleString()
+                                    : "N/A"}
+                                </p>
+                              </div>
+                              {session.sessionId ===
+                                selectedSession.sessionId && (
+                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              <div className="bg-gray-50 rounded p-2">
+                                <p className="text-gray-500">Difficulty</p>
+                                <p className="font-medium">
+                                  {session.gameData?.difficulty || "N/A"}
+                                </p>
+                              </div>
+                              <div className="bg-gray-50 rounded p-2">
+                                <p className="text-gray-500">Stage</p>
+                                <p className="font-medium">
+                                  {session.gameData?.stage || "N/A"}
+                                </p>
+                              </div>
+                              <div className="bg-gray-50 rounded p-2">
+                                <p className="text-gray-500">Accuracy</p>
+                                <p className="font-medium">
+                                  {session.gameData?.metrics
+                                    ?.accuracyPercentage || "N/A"}
+                                  %
+                                </p>
+                              </div>
+                              <div className="bg-gray-50 rounded p-2">
+                                <p className="text-gray-500">Time</p>
+                                <p className="font-medium">
+                                  {session.gameData?.completionTime || "N/A"}s
+                                </p>
+                              </div>
+                              <div className="bg-gray-50 rounded p-2">
+                                <p className="text-gray-500">Total Clicks</p>
+                                <p className="font-medium">
+                                  {session.gameData?.rawTileClicks?.length || 0}
+                                </p>
+                              </div>
+                              <div className="bg-gray-50 rounded p-2">
+                                <p className="text-gray-500">Correct</p>
+                                <p className="font-medium text-green-600">
+                                  {session.gameData?.rawTileClicks?.filter(
+                                    (c: any) => c.wasCorrect,
+                                  ).length || 0}
+                                </p>
+                              </div>
+                              <div className="bg-gray-50 rounded p-2">
+                                <p className="text-gray-500">Incorrect</p>
+                                <p className="font-medium text-red-600">
+                                  {session.gameData?.rawTileClicks?.filter(
+                                    (c: any) => !c.wasCorrect,
+                                  ).length || 0}
+                                </p>
+                              </div>
+                              <div className="bg-gray-50 rounded p-2">
+                                <p className="text-gray-500">Hints Used</p>
+                                <p className="font-medium">
+                                  {session.gameData?.metrics?.totalHintsUsed ||
+                                    0}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Modal Pagination Controls */}
+                      {modalTotalPages > 1 && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="flex items-center justify-between">
+                            {/* Left - Results Info */}
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm text-gray-600">
+                                Showing{" "}
+                                <span className="font-semibold text-gray-900">
+                                  {(modalPage - 1) * modalLimit + 1}-
+                                  {Math.min(
+                                    modalPage * modalLimit,
+                                    modalTotalItems,
+                                  )}
+                                </span>{" "}
+                                of{" "}
+                                <span className="font-semibold text-gray-900">
+                                  {modalTotalItems}
+                                </span>{" "}
+                                sessions
+                              </span>
+
+                              {/* Limit Selector */}
+                              <select
+                                value={modalLimit}
+                                onChange={(e) => {
+                                  const newLimit = Number(e.target.value);
+                                  setModalLimit(newLimit);
+                                  setModalPage(1);
+                                  if (modalUserId) {
+                                    fetchAllUserSessionsForModal(
+                                      modalUserId,
+                                      1,
+                                      newLimit,
+                                    );
+                                  }
+                                }}
+                                className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value={5}>5 per page</option>
+                                <option value={10}>10 per page</option>
+                                <option value={20}>20 per page</option>
+                                <option value={50}>50 per page</option>
+                              </select>
+                            </div>
+
+                            {/* Right - Page Navigation */}
+                            <div className="flex items-center gap-1">
+                              {/* Previous Button */}
+                              <button
+                                onClick={() => {
+                                  if (modalPage > 1 && modalUserId) {
+                                    const newPage = modalPage - 1;
+                                    setModalPage(newPage);
+                                    fetchAllUserSessionsForModal(
+                                      modalUserId,
+                                      newPage,
+                                      modalLimit,
+                                    );
+                                  }
+                                }}
+                                disabled={modalPage === 1}
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                  modalPage === 1
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-white text-gray-700 hover:bg-blue-50 border border-gray-300"
+                                }`}
+                              >
+                                Previous
+                              </button>
+
+                              {/* Page Numbers */}
+                              {Array.from(
+                                { length: Math.min(5, modalTotalPages) },
+                                (_, i) => {
+                                  let pageNum;
+                                  if (modalTotalPages <= 5) {
+                                    pageNum = i + 1;
+                                  } else if (modalPage <= 3) {
+                                    pageNum = i + 1;
+                                  } else if (modalPage >= modalTotalPages - 2) {
+                                    pageNum = modalTotalPages - 4 + i;
+                                  } else {
+                                    pageNum = modalPage - 2 + i;
+                                  }
+
+                                  return (
+                                    <button
+                                      key={pageNum}
+                                      onClick={() => {
+                                        if (modalUserId) {
+                                          setModalPage(pageNum);
+                                          fetchAllUserSessionsForModal(
+                                            modalUserId,
+                                            pageNum,
+                                            modalLimit,
+                                          );
+                                        }
+                                      }}
+                                      className={`w-8 h-8 rounded-md text-sm font-medium transition-colors ${
+                                        modalPage === pageNum
+                                          ? "bg-blue-600 text-white"
+                                          : "bg-white text-gray-700 hover:bg-blue-50 border border-gray-300"
+                                      }`}
+                                    >
+                                      {pageNum}
+                                    </button>
+                                  );
+                                },
+                              )}
+
+                              {/* Ellipsis */}
+                              {modalTotalPages > 5 &&
+                                modalPage < modalTotalPages - 2 && (
+                                  <span className="px-2 text-gray-400">
+                                    ...
+                                  </span>
+                                )}
+
+                              {/* Next Button */}
+                              <button
+                                onClick={() => {
+                                  if (
+                                    modalPage < modalTotalPages &&
+                                    modalUserId
+                                  ) {
+                                    const newPage = modalPage + 1;
+                                    setModalPage(newPage);
+                                    fetchAllUserSessionsForModal(
+                                      modalUserId,
+                                      newPage,
+                                      modalLimit,
+                                    );
+                                  }
+                                }}
+                                disabled={modalPage === modalTotalPages}
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                                  modalPage === modalTotalPages
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-white text-gray-700 hover:bg-blue-50 border border-gray-300"
+                                }`}
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Selected Session Details */}
                   <div className="bg-linear-to-br from-yellow-50 to-orange-100 rounded-xl p-5 border border-yellow-200">
-                    <h3 className="font-semibold text-gray-900 mb-2">
-                      Click Analysis
+                    <h3 className="font-semibold text-gray-900 mb-4 text-lg">
+                      Selected Session Click Details
                     </h3>
                     {selectedSession.gameData?.rawTileClicks?.map(
                       (click: any, index: number) => (
@@ -1330,29 +1758,42 @@ export default function ContentsPage() {
                     )}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+            {/* Footer - Fixed at bottom */}
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center flex-shrink-0">
               <div className="text-sm text-gray-500">
-                Stage {selectedSession.gameData?.stage} • Difficulty{" "}
-                {selectedSession.gameData?.difficulty}
+                Showing {allUserSessions.length} sessions for this user
               </div>
 
               <div className="flex gap-3">
-                {/* Download Button */}
-                <button
+                {/* Download All Sessions Button */}
+                {allUserSessions.length > 0 && (
+                  <button
+                    onClick={downloadAllSessionsFromModal}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download All ({allUserSessions.length})
+                  </button>
+                )}
+
+                {/* Download Selected Button */}
+                {/* <button
                   onClick={() => downloadSessionAsExcel(selectedSession)}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
                 >
                   <Download className="w-4 h-4" />
-                  Download XLSX
-                </button>
+                  Download Selected
+                </button> */}
 
                 {/* Close Button */}
                 <button
-                  onClick={() => setShowDetails(false)}
+                  onClick={() => {
+                    setShowDetails(false);
+                    setAllUserSessions([]);
+                  }}
                   className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
                 >
                   Close

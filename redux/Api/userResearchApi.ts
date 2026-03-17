@@ -49,6 +49,39 @@ const userResearchApi = {
       throw error;
     }
   },
+
+  getSpecificResearcherUserById: async (
+    userId: string,
+    page?: number,
+    limit?: number,
+  ) => {
+    try {
+      const query = new URLSearchParams();
+      if (page) query.append("page", page.toString());
+      if (limit) query.append("limit", limit.toString());
+
+      const queryString = query.toString();
+      const url = `/api/v1/game_one/find_by_specific_researcherUser/${userId}${queryString ? `?${queryString}` : ""}`;
+
+      const response = await api.get(url);
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
+
+  getAllResearcherUsers: async () => {
+    try {
+      const response = await api.get(
+        `/api/v1/game_one/find_by_researcher_user?limit=1000`,
+      );
+      return response;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  },
 };
 
 export default userResearchApi;
