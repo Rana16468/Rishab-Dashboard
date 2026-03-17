@@ -23,7 +23,7 @@ const privacyPolicyApi = {
     }
 
     try {
-      const response = await api.get<any>("/api/v1/setting/privacy_policys");
+      const response = await api.get<any>("/api/v1/setting/find_by_privacy_policys");
       return response;
     } catch (error) {
       throw error;

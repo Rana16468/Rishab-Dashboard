@@ -1,41 +1,83 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import { useRouter } from "next/navigation";
+
 import { ChevronLeft, Save } from "lucide-react";
+
 import { toast } from "sonner";
+
 import { buttonbg } from "@/contexts/theme";
+import privacyPolicyApi from "@/redux/Api/settings/privacyPolicyApi";
 
 export default function PrivacyPolicyPage() {
+  console.log("Privacy Policy Page Component Rendered!");
   const [content, setContent] = useState("");
+
   const [isLoading, setIsLoading] = useState(true);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const router = useRouter();
 
   useEffect(() => {
-    // Mock fetching data
-    const timer = setTimeout(() => {
-      setContent(
-        "<h1>Privacy Policy</h1><p>Your privacy is important to us...</p>",
-      );
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    const fetchPrivacyPolicy = async () => {
+      console.log("Starting privacy policy fetch...");
+      try {
+        const response = await privacyPolicyApi.getPrivacyPolicy();
+        console.log("Privacy policy API response:", response);
+
+        if (response?.success && response?.data) {
+          console.log("Setting content:", response.data.PrivacyPolicy);
+          setContent(response.data.PrivacyPolicy || response.data.content || "");
+        } else {
+          console.log("No data in response, setting empty content");
+          setContent("");
+        }
+      } catch (error) {
+        console.error("Failed to fetch privacy policy:", error);
+        toast.error("Failed to load privacy policy");
+        setContent("");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPrivacyPolicy();
   }, []);
 
   const handleSubmit = async () => {
+    console.log("Starting privacy policy save...");
     setIsSubmitting(true);
-    // Mock API call
-    setTimeout(() => {
+
+    try {
+      const response = await privacyPolicyApi.createPrivacyPolicy({
+        PrivacyPolicy: content,
+      });
+
+      console.log("Save API response:", response);
+
+      if (response?.success) {
+        toast.success("Privacy Policy updated successfully!");
+      } else {
+        console.log("Save failed - response not successful");
+        toast.error("Failed to update privacy policy");
+      }
+    } catch (error) {
+      console.error("Failed to update privacy policy:", error);
+      toast.error("Failed to update privacy policy");
+    } finally {
       setIsSubmitting(false);
-      toast.success("Privacy Policy updated successfully!");
-    }, 1000);
+    }
   };
 
   if (isLoading) {
+    console.log("Loading state - showing spinner");
     return (
       <div className="flex justify-center items-center h-[50vh]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p className="ml-4">Loading Privacy Policy...</p>
       </div>
     );
   }
@@ -52,6 +94,7 @@ export default function PrivacyPolicyPage() {
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
+
         <h1 className="text-white text-xl sm:text-2xl font-bold">
           Privacy Policy
         </h1>
@@ -61,6 +104,7 @@ export default function PrivacyPolicyPage() {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Content
         </label>
+
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}

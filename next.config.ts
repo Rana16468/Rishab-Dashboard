@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
         hostname: "res.cloudinary.com",
         port: "",
         pathname: "/**",
+        // proxy: "https://res.cloudinary.com",
       },
     ],
   },
